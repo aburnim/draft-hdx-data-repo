@@ -1,0 +1,59 @@
+{
+  "retrieved": "2026-10-20",
+  "files": [
+    {
+      "id": "zenodo_dataset4",
+      "file": "Dataset_4_HDXNMR.json",
+      "url": "https://zenodo.org/records/14983481/files/Dataset_4_HDXNMR.json?download=1",
+      "license": "CC-BY-4.0",
+      "level": "L2",
+      "title": "HDX-NMR per-residue exchange rates and unfolding free energies (13 proteins)",
+      "sha256": "ab28c77a3c13bae89f2dedde09d3a9405ad0586230f43ec590104308873b1aa5",
+      "bytes": 101380
+    },
+    {
+      "id": "zenodo_dataset3",
+      "file": "Dataset_3_MeasurablyStable.json",
+      "url": "https://zenodo.org/records/14983481/files/Dataset_3_MeasurablyStable.json?download=1",
+      "license": "CC-BY-4.0",
+      "level": "L1",
+      "title": "mHDX-MS isotope distributions and fitted exchange rates, measurably stable domains",
+      "sha256": "c03ac079136608b4018e93f56e58ff05027d6beae32f30ede2368817f5ab9deb",
+      "bytes": 285628682
+    },
+    {
+      "id": "pdb_8ske",
+      "file": "8SKE.cif",
+      "url": "https://files.rcsb.org/download/8SKE.cif",
+      "license": "CC0-1.0",
+      "level": "L2",
+      "title": "PDB 8SKE, NMR solution structure of EEHEE_rd4_0642 (20 models)",
+      "sha256": "5d63affa4f32d2f30d857d65c81872c5d697ed24b3518a99a7381f3a83e11519",
+      "bytes": 1789364
+    },
+    {
+      "id": "pride_pxd061702",
+      "file": "PXD061702.json",
+      "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD061702",
+      "license": "CC0-1.0",
+      "level": "L0",
+      "title": "PRIDE project record for the raw mHDX-MS files",
+      "sha256": "f4ca788d9fd8ba9e6496d0c4cfce7eb47f9cbedf96ef01d68aa086039718ce61",
+      "bytes": 5469
+    }
+  ],
+  "repos": [
+    {
+      "repo": "https://github.com/Rocklin-Lab/mhdx_pipeline",
+      "commit": "57ba35aa08d0bc9ec65ed7eebd150f59a1e828a7"
+    },
+    {
+      "repo": "https://github.com/Rocklin-Lab/hdxrate_pipeline",
+      "commit": "d98d822d6477a0b2097afc53b3e051ea820db8fe"
+    },
+    {
+      "repo": "https://github.com/Rocklin-Lab/mhdx_analysis",
+      "commit": "5ea0e8cd55fdec9320801d0b0ac73efaeed96d56"
+    }
+  ]
+}

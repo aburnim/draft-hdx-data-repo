@@ -1,0 +1,13 @@
+name: hdx-data-repo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - nodejs=20
+  - pandas
+  - numpy
+  - scipy
+  - ijson
+  - gemmi
+  - jsonschema
+  - requests

@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background: #f8f9fc;
+  color: #1a1e2a;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Mol* draws its own chrome inside the container; keep it from inheriting page fonts. */
+.msp-plugin {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The explorer has its own model slider; hide Mol*'s trajectory control and toasts. */
+.msp-viewport-top-left-controls,
+.msp-plugin .msp-toast-container {
+  display: none !important;
+}

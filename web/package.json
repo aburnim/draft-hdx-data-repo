@@ -1,0 +1,30 @@
+{
+  "name": "hdx-entry-viewer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "molstar": "5.11.0",
+    "plotly.js-dist-min": "2.35.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/plotly.js": "2.35.2",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "@vitejs/plugin-react": "4.3.4",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.49",
+    "sass": "1.83.0",
+    "tailwindcss": "3.4.19",
+    "typescript": "5.9.3",
+    "vite": "6.0.7"
+  }
+}

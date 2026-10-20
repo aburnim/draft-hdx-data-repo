@@ -4,6 +4,7 @@ import type Plotly from "plotly.js";
 import { trackFromJSON } from "../vendor/hetstar/tracks";
 import { SERIES, STABILITY_RAMP, DEUTERATION_RAMP } from "./colors";
 import { fmtTime } from "./data";
+import { SourceLine } from "./provenance-card";
 import { bySeq, nmrConditions, shortLabel, type EntryMetrics } from "./model";
 import Plot from "./Plot";
 import type { Entry, MhdxMeasurement } from "./types";
@@ -24,22 +25,21 @@ const colorscale = (stops: number[]): [number, string][] => stops.map((c, i) => 
 
 export function Card({
   title,
-  source,
+  prov,
   children,
   caption,
 }: {
   title: string;
-  source: string;
+  /** derivation id: where the plotted values come from */
+  prov: string;
   children: ReactNode;
   caption?: ReactNode;
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-1 rounded-lg border border-line bg-white p-3">
-      <header className="flex flex-wrap items-baseline justify-between gap-x-3">
+      <header className="flex flex-col gap-0.5">
         <h3 className="text-[13px] font-semibold text-ink">{title}</h3>
-        <span className="font-mono text-[10px] text-ink-muted" title="where these values come from">
-          {source}
-        </span>
+        <SourceLine id={prov} />
       </header>
       {children}
       {caption && <p className="text-[11px] leading-snug text-ink-muted">{caption}</p>}
@@ -107,7 +107,7 @@ export function LandscapePlot({ entry, links }: { entry: Entry; links: PlotLinks
     }],
   }), [links.threshold]);
   return (
-    <Card title="Sorted ΔG: mHDX-MS and HDX-NMR" source="m_001 · m_002">
+    <Card title="Sorted ΔG: mHDX-MS and HDX-NMR" prov="plot:landscape">
       <Plot data={data} layout={layout} height={340} />
     </Card>
   );
@@ -170,7 +170,7 @@ export function IsotopePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks
   return (
     <Card
       title="Isotope distributions over time"
-      source={`m_001 · a_d3_iso row ${m.source_row}`}
+      prov="plot:isotope"
       caption={<>Measured intact-protein isotope distributions (filled) and the distributions predicted by the rate fit (line), at 9 of {m.timepoints_s.length} labeling times. Each row is scaled to its maximum. Selecting a row sets the time cursor.</>}
     >
       <Plot
@@ -214,7 +214,7 @@ export function UptakePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks 
   return (
     <Card
       title="Deuterium uptake, intact protein"
-      source={`m_001 · a_d3_iso row ${m.source_row}`}
+      prov="plot:uptake"
       caption="Centroids computed by this repository from the measured and predicted distributions, without back-exchange correction. The dotted line marks the time used for the structure coloring; selecting a point moves it."
     >
       <Plot data={data} layout={layout} height={340} onClick={(e) => {
@@ -251,7 +251,7 @@ export function ChicletPlot({ entry, em, links }: { entry: Entry; em: EntryMetri
   return (
     <Card
       title="ΔG per residue by HDX-NMR condition"
-      source="m_002 · a_d4"
+      prov="plot:chiclet"
       caption="Blank cells have no reported value. Prolines lack a backbone amide hydrogen; Dataset_4 does not state the reason for other gaps."
     >
       <Plot data={data} layout={layout} height={220} {...seqHandlers(links)} />
@@ -282,13 +282,13 @@ export function ButterflyPlot({ entry, links }: { entry: Entry; links: PlotLinks
   const layout = useMemo<Partial<Plotly.Layout>>(() => ({
     barmode: "overlay",
     xaxis: residueAxis(entry),
-    yaxis: { title: { text: "ΔG (kcal/mol); No-His plotted negative" }, tickformat: "~f" },
+    yaxis: { title: { text: "ΔG (kcal/mol)" }, tickformat: "~f" },
     shapes: hoverColumn(links.hoverSeq),
     margin: { l: 52, r: 12, t: 8, b: 84 },
   }), [links.hoverSeq, entry]);
   if (!top || !bottom) return null;
   return (
-    <Card title="ΔG per residue: 6xHis (mean) and No-His" source="m_002 · a_d4 rows 37, 5">
+    <Card title="ΔG per residue: 6xHis (mean) and No-His" prov="plot:butterfly" caption="No-His values are plotted as negative.">
       <Plot data={data} layout={layout} height={280} {...seqHandlers(links)} />
     </Card>
   );
@@ -328,7 +328,7 @@ export function TagEffectPlot({ entry, links }: { entry: Entry; links: PlotLinks
   return (
     <Card
       title="ΔΔG per residue, 6xHis minus No-His"
-      source="m_002 · computed here"
+      prov="plot:woods"
       caption={<>Bars: ΔΔG = ΔG(6xHis mean) − ΔG(No-His). Whiskers: ±|r1 − r2| from the two 6xHis replicates. {n} of {rows.length} residues have |ΔΔG| outside this range (blue: higher ΔG in 6xHis; red: lower). No-His has one replicate, so its variability is not included. This is not a statistical test.</>}
     >
       <Plot data={data} layout={layout} height={260} {...seqHandlers(links)} />

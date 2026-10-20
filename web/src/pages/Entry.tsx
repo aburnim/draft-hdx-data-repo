@@ -3,6 +3,7 @@ import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { fmt, METRIC_LABELS, useJSON } from "../hdx/data";
 import Explorer from "../hdx/Explorer";
 import Provenance from "../hdx/Provenance";
+import { derivationLabel, ProvenanceProvider, RAW_STYLE, SourceLine, TIER_STYLE } from "../hdx/provenance-card";
 import type { Entry as EntryT, Metric } from "../hdx/types";
 
 const TABS = [
@@ -50,11 +51,13 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
         ))}
       </div>
 
-      {active === "explore" && <Explorer entry={entry} />}
-      {active === "overview" && <Overview entry={entry} />}
-      {active === "interpretations" && <Interpretations entry={entry} />}
-      {active === "provenance" && <Provenance entry={entry} />}
-      {active === "downloads" && <Downloads entry={entry} />}
+      <ProvenanceProvider entry={entry}>
+        {active === "explore" && <Explorer entry={entry} />}
+        {active === "overview" && <Overview entry={entry} />}
+        {active === "interpretations" && <Interpretations entry={entry} />}
+        {active === "provenance" && <Provenance entry={entry} />}
+        {active === "downloads" && <Downloads entry={entry} />}
+      </ProvenanceProvider>
     </div>
   );
 }
@@ -90,7 +93,9 @@ function MetricTile({ m }: { m: Metric }) {
       <div className="text-[18px] font-semibold tabular-nums text-ink">
         {fmt(m.value, Math.abs(m.value) >= 10 ? 0 : 2)} <span className="text-[11px] font-normal text-ink-muted">{m.unit ?? ""}</span>
       </div>
-      <div className="font-mono text-[9.5px] text-ink-muted">{m.level} · {m.interpretation}{m.computed_here ? " · computed here" : ""}</div>
+      <div className="mt-0.5">
+        <SourceLine id={`metric:${m.key}`} compact />
+      </div>
     </div>
   );
 }
@@ -99,6 +104,7 @@ function Overview({ entry }: { entry: EntryT }) {
   const seq = entry.chain.positions.map((p) => p.letter).join("");
   const nmr = entry.conditions.filter((c) => c.method === "HDX-NMR");
   return (
+    <div className="flex flex-col gap-6">
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="flex flex-col gap-4">
         <Facts rows={[
@@ -122,10 +128,61 @@ function Overview({ entry }: { entry: EntryT }) {
           <b className="text-ink">Reading this entry.</b> mHDX-MS measures the intact protein. Its fit reports ΔG
           for each exchanging site, sorted by value; sites are not assigned to residues. HDX-NMR reports ΔG per backbone
           amide, on constructs that differ from the mHDX-MS construct (see the Constructs lane). Empty cells have no
-          reported value; they are not zeros. The Provenance tab gives the source file of each value.
+          reported value; they are not zeros. Each source line opens a card with the value&apos;s file, field, row,
+          processing steps and a check command; the Provenance tab shows the full graph.
         </div>
       </div>
     </div>
+    <SourcesTable entry={entry} />
+    </div>
+  );
+}
+
+/** Every displayed value and plot, with where it comes from and what reproducing it takes. */
+function SourcesTable({ entry }: { entry: EntryT }) {
+  const runs = new Map(entry.runs.map((r) => [r.id, r]));
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Where each value comes from</h2>
+      <div className="overflow-x-auto rounded-lg border border-line bg-white">
+        <table className="w-full min-w-[760px] text-left text-[12px]">
+          <thead className="bg-surface-muted text-[10.5px] uppercase tracking-wide text-ink-muted">
+            <tr>
+              <th className="px-3 py-2 font-semibold">Value or plot</th>
+              <th className="px-3 py-2 font-semibold">Source and tier</th>
+              <th className="px-3 py-2 font-semibold">Produced by</th>
+              <th className="px-3 py-2 font-semibold">From raw data</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entry.derivations.map((d) => {
+              const label = derivationLabel(d);
+              return (
+                <tr key={d.id} className="border-t border-line align-top">
+                  <td className="px-3 py-2 text-ink">
+                    {label}
+                    {d.value != null && <span className="ml-1.5 font-mono text-ink-secondary">{fmt(d.value, Math.abs(d.value) >= 10 ? 0 : 2)}{d.unit ? ` ${d.unit}` : ""}</span>}
+                  </td>
+                  <td className="max-w-[320px] px-3 py-2"><SourceLine id={d.id} /></td>
+                  <td className="px-3 py-2 text-ink-secondary">
+                    {[...d.runs.map((r) => runs.get(r)?.software ?? r), ...(d.tier === "computed" ? ["this repository"] : [])].join(" → ") || "deposited"}
+                  </td>
+                  <td className="px-3 py-2" style={{ color: RAW_STYLE[d.raw].color }}>{RAW_STYLE[d.raw].label.replace("from raw: ", "")}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-muted">
+        {Object.values(TIER_STYLE).map((t) => (
+          <span key={t.label} className="inline-flex items-center gap-1">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ background: t.color }} />
+            <b style={{ color: t.color }}>{t.label}</b>: {t.hint}
+          </span>
+        ))}
+      </p>
+    </section>
   );
 }
 

@@ -87,6 +87,7 @@
         "required": ["id", "level", "title", "format", "uri", "license", "held"],
         "properties": {
           "id": { "type": "string" },
+          "short": { "type": "string", "description": "short display name" },
           "level": { "enum": ["L0", "L1", "L2", "L3"] },
           "title": { "type": "string" },
           "format": { "type": "string" },
@@ -143,6 +144,38 @@
           "domain": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
           "keys": { "type": "array" },
           "values": { "type": "array", "items": { "type": ["number", "null"] } }
+        }
+      }
+    },
+    "derivations": {
+      "type": "array",
+      "description": "Where each displayed value or plot comes from, and how to check it.",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "tier", "inputs", "runs", "raw"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "tier": { "enum": ["copied", "computed"], "description": "copied: verbatim from an archived file; computed: derived by this repository from archived files" },
+          "value": { "type": ["number", "null"] },
+          "unit": { "type": ["string", "null"] },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["artifact", "fields", "rows"],
+              "properties": {
+                "artifact": { "type": "string" },
+                "fields": { "type": "array", "items": { "type": "string" } },
+                "rows": { "type": "array", "items": { "type": ["string", "null"] } }
+              }
+            }
+          },
+          "runs": { "type": "array", "items": { "type": "string" }, "description": "upstream run chain, raw data first" },
+          "raw": { "enum": ["pipelines", "blocked", "deposited"], "description": "regeneration from raw data: needs the upstream pipelines, is blocked by an unlocated input, or does not apply (deposited file)" },
+          "operation": { "type": ["string", "null"] },
+          "code": { "type": ["string", "null"] },
+          "check": { "type": ["string", "null"] }
         }
       }
     },

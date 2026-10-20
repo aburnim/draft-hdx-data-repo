@@ -18,6 +18,7 @@ import {
 } from "./model";
 import { ButterflyPlot, ChicletPlot, IsotopePlot, LandscapePlot, TagEffectPlot, UptakePlot, type PlotLinks } from "./plots";
 import type { Entry } from "./types";
+import { SourceLine } from "./provenance-card";
 import { setResidueColors } from "./value-theme";
 
 // The linked explorer: one hover, one selection, one time cursor and one ΔG threshold,
@@ -287,6 +288,19 @@ export default function Explorer({ entry }: { entry: Entry }) {
               </div>
             </div>
           )}
+          <div className="flex flex-col gap-1 border-t border-line pt-2">
+            <span className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-muted">Sources</span>
+            <div className="grid grid-cols-[76px_minmax(0,1fr)] items-center gap-x-2 gap-y-1 text-[11px] text-ink-muted">
+              {mode !== "sse" && (
+                <>
+                  <span>colors</span>
+                  <SourceLine id={`color:${mode}`} />
+                </>
+              )}
+              <span>coordinates</span>
+              <SourceLine id="structure:coords" />
+            </div>
+          </div>
           <Hint>Hovering or selecting a residue in the structure, the lanes, or a residue-axis plot highlights it in all three.</Hint>
         </aside>
       </div>

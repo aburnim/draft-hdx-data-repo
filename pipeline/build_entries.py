@@ -282,22 +282,22 @@ def build_entry(name: str, pdb: str, d3_rows: list[dict], d4_rows: list[dict]) -
     lock_uri = lambda k: LOCK[k]["url"].replace("?download=1", "")  # noqa: E731
     d3_uri, d3_sha = lock_uri("zenodo_dataset3"), LOCK["zenodo_dataset3"]["sha256"]
     artifacts = [
-        {"id": "a_raw", "level": "L0", "title": "Raw mHDX-MS data (Waters SYNAPT G2-Si), archived in PRIDE", "format": "vendor raw",
+        {"id": "a_raw", "short": f"PRIDE {PRIDE}", "level": "L0", "title": "Raw mHDX-MS data (Waters SYNAPT G2-Si), archived in PRIDE", "format": "vendor raw",
          "uri": f"https://www.ebi.ac.uk/pride/archive/projects/{PRIDE}", "sha256": None, "license": "CC0-1.0", "held": False},
-        {"id": "a_nmr_raw", "level": "L0", "title": "HDX-NMR spectra (location not stated in the cited sources)", "format": "NMR spectra",
+        {"id": "a_nmr_raw", "short": "NMR spectra", "level": "L0", "title": "HDX-NMR spectra (location not stated in the cited sources)", "format": "NMR spectra",
          "uri": None, "sha256": None, "license": "unknown", "held": False},
         # Dataset_3 is one file holding two levels; each artifact names the fields it covers.
-        {"id": "a_d3_iso", "level": "L1", "title": "Isotope distributions per timepoint (Zenodo Dataset_3)", "format": "JSON",
+        {"id": "a_d3_iso", "short": "Dataset_3", "level": "L1", "title": "Isotope distributions per timepoint (Zenodo Dataset_3)", "format": "JSON",
          "uri": d3_uri, "sha256": d3_sha, "license": "CC-BY-4.0", "held": False,
          "fields": ["true_time", "exp_distribution", "backexchange"]},
-        {"id": "a_d3_fit", "level": "L2", "title": "Fitted exchange rates and ΔG (Zenodo Dataset_3)", "format": "JSON",
+        {"id": "a_d3_fit", "short": "Dataset_3", "level": "L2", "title": "Fitted exchange rates and ΔG (Zenodo Dataset_3)", "format": "JSON",
          "uri": d3_uri, "sha256": d3_sha, "license": "CC-BY-4.0", "held": False,
          "fields": ["rates_mean", "rates_ci_5", "rates_ci_95", "free_energy", "pred_distribution", "dg_*", "cooperativity_*"]},
-        {"id": "a_d4", "level": "L2", "title": "HDX-NMR per-residue rates and ΔG (Zenodo Dataset_4)", "format": "JSON",
+        {"id": "a_d4", "short": "Dataset_4", "level": "L2", "title": "HDX-NMR per-residue rates and ΔG (Zenodo Dataset_4)", "format": "JSON",
          "uri": lock_uri("zenodo_dataset4"), "sha256": LOCK["zenodo_dataset4"]["sha256"], "license": "CC-BY-4.0", "held": False},
-        {"id": "a_pdb", "level": "L2", "title": f"PDB {pdb}: NMR structure, {struct['n_models']} models", "format": "mmCIF",
+        {"id": "a_pdb", "short": f"PDB {pdb}", "level": "L2", "title": f"PDB {pdb}: NMR structure, {struct['n_models']} models", "format": "mmCIF",
          "uri": lock_uri(f"pdb_{pdb.lower()}"), "sha256": LOCK[f"pdb_{pdb.lower()}"]["sha256"], "license": "CC0-1.0", "held": True},
-        {"id": "a_entry", "level": "L3", "title": "Entry record, with L3 metrics computed by this repository", "format": "JSON",
+        {"id": "a_entry", "short": "entry record", "level": "L3", "title": "Entry record, with L3 metrics computed by this repository", "format": "JSON",
          "uri": f"entries/{opaque_id(name)}.json", "sha256": None, "license": "CC-BY-4.0", "held": True},
     ]
     commit = {r["repo"].rsplit("/", 1)[1]: r["commit"] for r in REPOS}
@@ -370,7 +370,118 @@ def build_entry(name: str, pdb: str, d3_rows: list[dict], d4_rows: list[dict]) -
         "license": "CC-BY-4.0 (derived from Zenodo 14983481); structure CC0-1.0",
         "citation": "Ferrari et al., Large-scale discovery, analysis, and design of protein energy landscapes. Nature (2026).",
     }
+    entry["derivations"] = build_derivations(entry)
     return entry, residue_rows
+
+
+# --- derivations: where each displayed value comes from -------------------------------
+
+TIERS = ("copied", "computed")
+
+
+def upstream(entry: dict, artifact_id: str) -> dict:
+    """Walk runs backwards from an artifact to raw data. Returns the run chain (raw first)
+    and whether regeneration from raw data is possible ("pipelines"), blocked by an input
+    with no known location ("blocked"), or not applicable to a deposited file ("deposited")."""
+    by_output = {o: r for r in entry["runs"] for o in r["outputs"]}
+    arts = {a["id"]: a for a in entry["artifacts"]}
+    chain, status, frontier, seen = [], "pipelines", [artifact_id], set()
+    while frontier:
+        aid = frontier.pop()
+        run = by_output.get(aid)
+        if run is None or run["id"] in seen:
+            continue
+        seen.add(run["id"])
+        chain.insert(0, run["id"])
+        for i in run["inputs"]:
+            if arts[i]["uri"] is None:
+                status = "blocked"
+            frontier.append(i)
+    if not chain:
+        status = "deposited"
+    return {"runs": chain, "status": status}
+
+
+def build_derivations(entry: dict) -> list[dict]:
+    """One record per displayed value or plot: inputs (artifact, fields, rows), the upstream
+    run chain, any operation done here, and a command that checks the value."""
+    eid = entry["id"]
+    d3_row = str(entry["mhdx"][0]["source_row"]) if entry["mhdx"] else None
+    rows = {c["id"]: str(c["source_row"]) for c in entry["conditions"] if c["method"] == "HDX-NMR"}
+    nmr_rows = sorted(rows.values(), key=int)
+    measured = [rows[c] for c in rows if "mean" not in c]
+    nohis = next((rows[c] for c in rows if "nohis" in c), None)
+    mapping = "Residue i of each NMR construct is mapped to 8SKE auth_seq_id by exact sequence match."
+    d3 = "data/raw/Dataset_3_MeasurablyStable.json"
+    d4 = "data/raw/Dataset_4_HDXNMR.json"
+
+    def rec(id_, label, tier, inputs, op=None, code=None, check=None, value=None, unit=None):
+        assert tier in TIERS
+        ups = [upstream(entry, i["artifact"]) for i in inputs]
+        status = "blocked" if any(u["status"] == "blocked" for u in ups) else (
+            "deposited" if all(u["status"] == "deposited" for u in ups) else "pipelines")
+        chain = []
+        for u in ups:
+            chain += [r for r in u["runs"] if r not in chain]
+        return {"id": id_, "label": label, "tier": tier, "value": value, "unit": unit, "inputs": inputs,
+                "runs": chain, "raw": status, "operation": op, "code": code, "check": check}
+
+    out = []
+    for m in entry["metrics"]:
+        if not m["computed_here"]:
+            out.append(rec(f"metric:{m['key']}", m["key"], "copied",
+                           [{"artifact": "a_d3_fit", "fields": [m["source_field"]], "rows": [d3_row]}],
+                           check=f"jq '.{m['source_field']}[\"{d3_row}\"]' {d3}", value=m["value"], unit=m["unit"]))
+    for m in entry["metrics"]:
+        if m["computed_here"]:
+            op = ("RMSD over the k highest sorted ΔG of each set; k = smaller site count; sites matched by rank."
+                  if m["key"] == "landscape_rmsd_top_k" else "Highest mHDX-MS ΔG minus highest HDX-NMR ΔG.")
+            out.append(rec(f"metric:{m['key']}", m["key"], "computed",
+                           [{"artifact": "a_d3_fit", "fields": ["free_energy"], "rows": [d3_row]},
+                            {"artifact": "a_d4", "fields": ["free_energy_nc_corrected"], "rows": [nohis]}],
+                           op=op, code="pipeline/build_entries.py (build_entry, L3 metrics)",
+                           check=f"jq '.metrics[] | select(.key==\"{m['key']}\")' web/public/entries/{eid}.json",
+                           value=m["value"], unit=m["unit"]))
+    out += [
+        rec("plot:landscape", "Sorted ΔG: mHDX-MS and HDX-NMR", "copied",
+            [{"artifact": "a_d3_fit", "fields": ["free_energy"], "rows": [d3_row]},
+             {"artifact": "a_d4", "fields": ["free_energy_nc_corrected"], "rows": nmr_rows}],
+            op="Values sorted in descending order for display.", check=f"jq '.free_energy[\"{d3_row}\"]' {d3}"),
+        rec("plot:isotope", "Isotope distributions over time", "copied",
+            [{"artifact": "a_d3_iso", "fields": ["exp_distribution", "true_time"], "rows": [d3_row]},
+             {"artifact": "a_d3_fit", "fields": ["pred_distribution"], "rows": [d3_row]}],
+            op="Each distribution scaled to its maximum for display.", check=f"jq '.exp_distribution[\"{d3_row}\"][1]' {d3}"),
+        rec("plot:uptake", "Deuterium uptake, intact protein", "computed",
+            [{"artifact": "a_d3_iso", "fields": ["exp_distribution", "true_time"], "rows": [d3_row]},
+             {"artifact": "a_d3_fit", "fields": ["pred_distribution"], "rows": [d3_row]}],
+            op="Centroid = Σ i·p(i) / Σ p(i) over mass-shift bins i; no back-exchange correction.",
+            code="pipeline/build_entries.py (centroid)", check=f"jq '.mhdx[0].exp_centroid' web/public/entries/{eid}.json"),
+        rec("plot:chiclet", "ΔG per residue by HDX-NMR condition", "copied",
+            [{"artifact": "a_d4", "fields": ["free_energy_nc_corrected"], "rows": nmr_rows}],
+            op=mapping, check=f"jq '.free_energy_nc_corrected[\"{nmr_rows[0]}\"]' {d4}"),
+        rec("plot:butterfly", "ΔG per residue: 6xHis (mean) and No-His", "copied",
+            [{"artifact": "a_d4", "fields": ["free_energy_nc_corrected"], "rows": [rows.get("nmr_6xhis_mean", nmr_rows[0]), nohis]}],
+            op=mapping, check=f"jq '.free_energy_nc_corrected[\"{nohis}\"]' {d4}"),
+        rec("plot:woods", "ΔΔG per residue, 6xHis minus No-His", "computed",
+            [{"artifact": "a_d4", "fields": ["free_energy_nc_corrected"], "rows": nmr_rows}],
+            op="ΔΔG = ΔG(6xHis mean) − ΔG(No-His); whisker = |ΔG(r1) − ΔG(r2)|. " + mapping,
+            code="web/src/hdx/plots.tsx (TagEffectPlot)"),
+        rec("color:dg", "Structure colored by ΔG (HDX-NMR)", "copied",
+            [{"artifact": "a_d4", "fields": ["free_energy_nc_corrected"], "rows": nmr_rows}],
+            op=mapping, check=f"jq '.free_energy_nc_corrected[\"{nmr_rows[0]}\"]' {d4}"),
+        rec("color:logpf", "Structure colored by log₁₀ protection factor", "computed",
+            [{"artifact": "a_d4", "fields": ["intrinsic_rates", "obs_rates"], "rows": measured}],
+            op="log₁₀(k_int / k_obs) per residue. " + mapping, code="pipeline/build_entries.py (build_entry, logpf tracks)",
+            check=f"jq '.tracks[\"logpf:nmr_6xhis_r1\"].values' web/public/entries/{eid}.json"),
+        rec("color:deut", "Structure colored by predicted deuteration at t", "computed",
+            [{"artifact": "a_d4", "fields": ["obs_rates"], "rows": measured}],
+            op="D = 1 − exp(−k_obs · t) per residue; single-exponential exchange, no back-exchange. " + mapping,
+            code="web/src/hdx/model.ts (deuterationTrack)"),
+        rec("structure:coords", "Structure coordinates (8SKE)", "copied",
+            [{"artifact": "a_pdb", "fields": ["whole file"], "rows": []}],
+            check=f"shasum -a 256 web/public/structures/{entry['external_refs']['pdb']}.cif"),
+    ]
+    return out
 
 
 # --- entry list ------------------------------------------------------------------------

@@ -19,6 +19,7 @@ export interface Condition {
 
 export interface Artifact {
   id: string;
+  short: string;
   level: Level;
   title: string;
   format: string;
@@ -59,6 +60,24 @@ export interface Metric {
   computed_here: boolean;
 }
 
+/** where one displayed value or plot comes from (schema "derivations") */
+export interface Derivation {
+  id: string;
+  label: string;
+  /** copied: verbatim from an archived file; computed: derived by this repository */
+  tier: "copied" | "computed";
+  value: number | null;
+  unit: string | null;
+  inputs: { artifact: string; fields: string[]; rows: (string | null)[] }[];
+  /** upstream run chain, raw data first */
+  runs: string[];
+  /** regeneration from raw data */
+  raw: "pipelines" | "blocked" | "deposited";
+  operation: string | null;
+  code: string | null;
+  check: string | null;
+}
+
 export interface MhdxMeasurement {
   id: string;
   source_row: number;
@@ -95,6 +114,7 @@ export interface Entry {
   tracks: Record<string, TrackJSON>;
   mhdx: MhdxMeasurement[];
   metrics: Metric[];
+  derivations: Derivation[];
   license: string;
   citation: string;
 }

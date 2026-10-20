@@ -115,6 +115,13 @@ The built site (`web/dist/`) is static and can be served from any host. Routes:
   distributions over time, chiclet heatmap, butterfly, and a Woods-style ΔΔG plot with
   replicate noise.
 - Hover or click a residue anywhere and the structure, lanes and residue plots follow.
+- **Per-value provenance.** Every metric, plot and structure coloring has a source line
+  (file · field · row) with a tier: *copied* (verbatim from an archived file) or
+  *computed here* (derived by this repository). Clicking it opens a card with the input
+  files and checksums, the upstream run chain at pinned commits, any operation applied
+  here with its code location, a copyable reproduce command (`jq` check), and whether
+  regeneration from raw data is possible or blocked. The Overview tab lists all of them
+  in one table. The records are the `derivations` list in each entry JSON.
 
 ## Repository layout
 

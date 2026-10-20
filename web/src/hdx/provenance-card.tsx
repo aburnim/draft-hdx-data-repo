@@ -21,7 +21,7 @@ export const TIER_STYLE: Record<Derivation["tier"], { label: string; color: stri
 
 export const RAW_STYLE: Record<Derivation["raw"], { label: string; color: string }> = {
   pipelines: { label: "from raw: rerun pipelines", color: "#5f616b" },
-  blocked: { label: "from raw: blocked", color: "#b4231d" },
+  blocked: { label: "raw input not found", color: "#b4231d" },
   deposited: { label: "deposited file", color: "#5f616b" },
 };
 
@@ -246,7 +246,7 @@ function ProvenanceDialog({ entry, d, onClose }: { entry: Entry; d: Derivation |
                 {d.raw === "pipelines" && <>From raw data: run the pipelines above on the PRIDE files, at the listed commits.</>}
                 {d.raw === "blocked" && (
                   <>
-                    From raw data: blocked. Input not located:{" "}
+                    From raw data: raw input not found:{" "}
                     {d.runs
                       .flatMap((rid) => runs.get(rid)?.inputs ?? [])
                       .filter((aid) => arts.get(aid)?.uri == null)

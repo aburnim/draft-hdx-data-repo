@@ -120,7 +120,7 @@ The built site (`web/dist/`) is static and can be served from any host. Routes:
   *computed here* (derived by this repository). Clicking it opens a card with the input
   files and checksums, the upstream run chain at pinned commits, any operation applied
   here with its code location, a copyable reproduce command (`jq` check), and whether
-  regeneration from raw data is possible or blocked. The Overview tab lists all of them
+  regeneration from raw data is possible or the raw input was not found. The Overview tab lists all of them
   in one table. The records are the `derivations` list in each entry JSON.
 
 ## Repository layout

@@ -172,7 +172,7 @@
             }
           },
           "runs": { "type": "array", "items": { "type": "string" }, "description": "upstream run chain, raw data first" },
-          "raw": { "enum": ["pipelines", "blocked", "deposited"], "description": "regeneration from raw data: needs the upstream pipelines, is blocked by an unlocated input, or does not apply (deposited file)" },
+          "raw": { "enum": ["pipelines", "blocked", "deposited"], "description": "regeneration from raw data: needs the upstream pipelines, is blocked because a raw input was not found (displayed as \"raw input not found\"), or does not apply (deposited file)" },
           "operation": { "type": ["string", "null"] },
           "code": { "type": ["string", "null"] },
           "check": { "type": ["string", "null"] }

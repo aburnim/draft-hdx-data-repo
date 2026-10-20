@@ -52,7 +52,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
       <footer className="mx-auto max-w-7xl px-4 pb-8 text-[11px] text-ink-muted">
-        Data: Ferrari et al. 2026, Zenodo 10.5281/zenodo.14983481 (CC-BY-4.0); raw spectra PRIDE PXD061702; structure PDB 8SKE (CC0).
+        Data: Ferrari et al. 2026, Zenodo 10.5281/zenodo.14983481 (CC-BY-4.0); raw spectra PRIDE PXD061702; structures PDB 8SKE, 8SKD, 8SKX, 5UYO, 8SHM (CC0).
         Viewer components adapted from hetstar (rtviii). A Prism prototype, Astera Institute.
       </footer>
     </div>

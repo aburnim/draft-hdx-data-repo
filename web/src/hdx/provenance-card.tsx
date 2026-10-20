@@ -1,14 +1,14 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { METRIC_LABELS } from "./data";
-import type { Artifact, Derivation, Entry, Run } from "./types";
+import type { Artifact, Derivation, View, Run } from "./types";
 
 // Per-value provenance. Every displayed value or plot names a derivation (pipeline
 // build_derivations); SourceLine shows its origin in one line, and clicking it opens a
 // card answering "where did this come from?" and "what would it take to reproduce it?".
 
 interface Ctx {
-  entry: Entry;
+  entry: View;
   open: (id: string) => void;
 }
 
@@ -25,7 +25,7 @@ export const RAW_STYLE: Record<Derivation["raw"], { label: string; color: string
   deposited: { label: "deposited file", color: "#5f616b" },
 };
 
-export function ProvenanceProvider({ entry, children }: { entry: Entry; children: ReactNode }) {
+export function ProvenanceProvider({ entry, children }: { entry: View; children: ReactNode }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const open = useCallback((id: string) => setOpenId(id), []);
   const value = useMemo(() => ({ entry, open }), [entry, open]);
@@ -51,7 +51,7 @@ export function derivationLabel(d: Derivation): string {
 
 /** "Dataset_3 · dg_max · row 214" for the first input, "+1 more" for the rest;
  * compact drops rows and further inputs */
-export function inputSummary(entry: Entry, d: Derivation, compact = false): string {
+export function inputSummary(entry: View, d: Derivation, compact = false): string {
   const arts = new Map(entry.artifacts.map((a) => [a.id, a]));
   const first = d.inputs[0];
   if (!first) return "–";
@@ -140,7 +140,7 @@ function Section({ k, children }: { k: string; children: ReactNode }) {
   );
 }
 
-function ProvenanceDialog({ entry, d, onClose }: { entry: Entry; d: Derivation | null; onClose: () => void }) {
+function ProvenanceDialog({ entry, d, onClose }: { entry: View; d: Derivation | null; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const el = ref.current;

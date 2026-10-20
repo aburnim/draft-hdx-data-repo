@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import type { Artifact, Entry, Level, Run } from "./types";
+import type { Artifact, View, Level, Run } from "./types";
 
 // Lineage as W3C PROV draws it: artifacts (entities) and runs (activities), with an edge
 // for every input a run used and every output it generated. Artifacts sit in columns by
@@ -20,8 +20,8 @@ type Node =
   | { kind: "artifact"; id: string; x: number; y: number; a: Artifact }
   | { kind: "run"; id: string; x: number; y: number; r: Run };
 
-export default function Provenance({ entry }: { entry: Entry }) {
-  const [picked, setPicked] = useState<string>("a_d3_fit");
+export default function Provenance({ entry, highlight }: { entry: View; highlight?: string }) {
+  const [picked, setPicked] = useState<string>("m_mhdx");
 
   const { nodes, edges, height } = useMemo(() => {
     const levelOf = new Map(entry.artifacts.map((a) => [a.id, LEVELS.indexOf(a.level)]));
@@ -75,9 +75,11 @@ export default function Provenance({ entry }: { entry: Entry }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="max-w-3xl text-[13px] leading-relaxed text-ink-secondary">
-        Boxes are files; rounded boxes are processing steps. Columns are Dynamic PDB data levels, from raw instrument
-        data (L0) to evaluation (L3). Dashed borders mark files referenced by URI and not hosted here; solid borders mark
-        files hosted here. Selecting a box shows its URI, SHA-256, and license.
+        Graph of the linked entries. Boxes are files; boxes with a double border are models, whose values are stored
+        in the file named in the box; rounded boxes are processing steps. Columns are Dynamic PDB data levels, from raw
+        instrument data (L0) to evaluation (L3). Dashed borders mark files referenced by URI and not hosted here; solid
+        borders mark files hosted here. Tinted boxes belong to this entry. Selecting a box shows its URI, SHA-256,
+        license, and owning entry.
       </p>
       <div className="overflow-x-auto rounded-lg border border-line bg-white p-3">
         <svg viewBox={`0 0 ${width} ${height}`} style={{ minWidth: 980, width: "100%" }} role="img" aria-label="Provenance graph">
@@ -107,18 +109,22 @@ export default function Provenance({ entry }: { entry: Entry }) {
               );
             }
             const missing = n.a.uri == null;
+            const own = highlight != null && n.a.entry === highlight;
             return (
               <g key={n.id} onClick={() => setPicked(n.id)} className="cursor-pointer">
+                {n.a.kind === "model" && (
+                  <rect x={n.x - 3} y={n.y - 3} width={A_W + 6} height={A_H + 6} rx={8} fill="none" stroke={active ? "#663be4" : "#d5d7e4"} strokeWidth={1} />
+                )}
                 <rect
                   x={n.x} y={n.y} width={A_W} height={A_H} rx={6}
-                  fill={n.a.held ? (active ? "#f1edfd" : "#ffffff") : "#ffffff"}
+                  fill={active ? "#f1edfd" : own ? "#f7f4fe" : "#ffffff"}
                   stroke={active ? "#663be4" : missing ? "#b4231d" : "#d5d7e4"}
                   strokeDasharray={n.a.held ? undefined : "4 3"} strokeWidth={active ? 2 : 1.2}
                 />
                 <foreignObject x={n.x + 8} y={n.y + 6} width={A_W - 16} height={A_H - 10}>
                   <div style={{ font: "500 11px 'IBM Plex Sans', sans-serif", color: "#1a1e2a", lineHeight: 1.25 }}>
                     <div style={{ font: "600 9.5px 'IBM Plex Mono', monospace", color: missing ? "#b4231d" : "#5f616b" }}>
-                      {n.id} · {n.a.format}{missing ? " · location unknown" : ""}
+                      {n.a.kind === "model" ? "model" : n.id} · {n.a.kind === "model" ? `in ${n.a.short}` : n.a.format}{missing ? " · location unknown" : ""}
                     </div>
                     {n.a.title}
                   </div>
@@ -146,13 +152,14 @@ function Row({ k, children }: { k: string; children: React.ReactNode }) {
   );
 }
 
-function ArtifactDetail({ a, entry }: { a: Artifact; entry: Entry }) {
+function ArtifactDetail({ a, entry }: { a: Artifact; entry: View }) {
   const producedBy = entry.runs.filter((r) => r.outputs.includes(a.id)).map((r) => r.id);
   const usedBy = entry.runs.filter((r) => r.inputs.includes(a.id)).map((r) => r.id);
   return (
     <dl>
       <h3 className="mb-2 text-[14px] font-semibold text-ink">{a.title}</h3>
-      <Row k="id · level">{a.id} · {a.level}</Row>
+      <Row k="id · level">{a.id} · {a.level}{a.kind === "model" ? ` · model stored in ${a.stored_in}` : ""}</Row>
+      <Row k="entry">{a.entry ? <a className="text-accent underline" href={`#/entry/${a.entry}/provenance`}>{a.entry}</a> : "cross-entry view"}</Row>
       <Row k="uri">{a.uri ? <a className="text-accent underline" href={a.uri} target="_blank" rel="noreferrer">{a.uri}</a> : "not stated in the cited sources"}</Row>
       <Row k="sha256">{a.sha256 ?? "–"}</Row>
       <Row k="stored here">{a.held ? "yes" : "no, referenced"}</Row>

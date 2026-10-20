@@ -1,12 +1,12 @@
 # Prism HDX entries (prototype)
 
-A protein-rooted, PDB-style view of hydrogen-deuterium exchange (HDX) data, with
-provenance from every plotted value back to the archived source files. Built for the
-Prism project (Astera Institute) as a first test of how HDX-MS could sit alongside
-Dynamic PDB.
+A registry-style view of hydrogen-deuterium exchange (HDX) data in which every displayed
+value is traced to its archived source file. Built for the Prism project (Astera
+Institute) as a first test of how HDX-MS could sit alongside Dynamic PDB.
 
-Status: prototype, schema `0.0.1` (rough draft). A front page listing HDX-MS entries,
-and one full entry page so far.
+Status: prototype, schemas `0.1.0` (draft). Five proteins, 10 HDX entries and 5
+reference-structure entries. Field names follow the Dynamic PDB schema v0.2.0
+(2026-10-16); HDX additions are listed per record.
 
 ## The problem
 
@@ -14,80 +14,99 @@ HDX-MS reports how fast backbone amides exchange with solvent, which measures lo
 stability and flexibility. The data for one protein is usually scattered:
 
 - raw spectra in PRIDE,
-- processed uptake tables in Zenodo or a supplement,
+- processed tables in Zenodo or a supplement,
 - analysis code on GitHub,
 - the structure in the PDB.
 
-Nothing ties these together per protein. Results are therefore hard to reuse, compare
-across methods, or audit. The agreed direction (see `planning-hdx-ms-data-repo.md`) is:
+Nothing ties these together per protein, so results are hard to reuse, compare across
+methods, or audit. The agreed direction (see `planning-hdx-ms-data-repo.md`) is:
 
-- do not build new storage; raw data stays in **PRIDE** and is cited by accession;
+- do not build new storage; raw data stays in **PRIDE** and is cited by file;
 - build a **protein-rooted analysis and visualization layer** on top;
-- start from a **rough-draft metadata format** and refine it with real data.
+- start from a **draft metadata format** and refine it with real data.
 
-This repository is that first test.
+## The proteins
 
-## The test sample
+Five de novo miniproteins from Ferrari et al. (Nature, 2026). Each has mHDX-MS data, HDX-NMR
+data, and a PDB structure whose sequence is identical to its 6xHis HDX-NMR construct
+(checked by sequence against Dataset_4 and RCSB).
 
-`EEHEE_rd4_0642`, a 64-residue de novo miniprotein from Ferrari et al. (Nature, 2026).
-It connects all four archives:
+| Protein | PDB | HDX-NMR measurements | mHDX-MS (Dataset_3 row, library, pH) |
+| --- | --- | --- | --- |
+| EEHEE_rd4_0642 | [8SKE](https://www.rcsb.org/structure/8SKE) | 6xHis ×2 + mean; No-His ×1 | 214, mutants04, pH6 |
+| EEHEE_rd4_0871 | [8SKD](https://www.rcsb.org/structure/8SKD) | 6xHis ×2 + mean; No-His ×3 + mean | 85, Lib14, pH6 |
+| HHH_rd4_0518 | [8SKX](https://www.rcsb.org/structure/8SKX) | 6xHis ×1; No-His ×2 + mean | 49, Lib09, pH6 + pH9 merged |
+| HEEH_rd4_0097 | [5UYO](https://www.rcsb.org/structure/5UYO) | 6xHis ×1 | 12, Lib09, pH6 |
+| EHEE_rd2_0005 | [8SHM](https://www.rcsb.org/structure/8SHM) | 6xHis ×2 + mean | 285, Lib11, pH6 + pH9 merged |
 
 | Source | Identifier | License | Used for |
 | --- | --- | --- | --- |
-| PRIDE | [PXD061702](https://www.ebi.ac.uk/pride/archive/projects/PXD061702) | CC0 | Raw mHDX-MS spectra (referenced, not copied) |
+| PRIDE | [PXD061702](https://www.ebi.ac.uk/pride/archive/projects/PXD061702) | CC0 | Raw mHDX-MS data: 1,183 mzML files, cited per file |
 | Zenodo | [10.5281/zenodo.14983481](https://doi.org/10.5281/zenodo.14983481) | CC-BY-4.0 | Dataset_3 (mHDX-MS), Dataset_4 (HDX-NMR) |
-| PDB | [8SKE](https://www.rcsb.org/structure/8SKE) | CC0 | NMR structure, 20 models |
+| PDB | 8SKE, 8SKD, 8SKX, 5UYO, 8SHM | CC0 | Reference structures (20-model NMR ensembles) |
 | GitHub | [Rocklin-Lab](https://github.com/Rocklin-Lab) `mhdx_pipeline`, `hdxrate_pipeline`, `mhdx_analysis` | see repos | Analysis code, pinned by commit |
-
-It has two independent readings of the same stability landscape:
-
-- **mHDX-MS** measures the whole protein at once: 32 timepoints of isotope
-  distributions, fitted to 42 sorted exchange rates and ΔG values. It cannot say which
-  residue each value belongs to.
-- **HDX-NMR** measures each residue: ΔG, exchange rate and intrinsic rate for two
-  constructs (6xHis, two replicates plus their mean; No-His, one replicate), all at
-  pH 6.3, 293 K, MES.
-
-8SKE's sequence is identical to the 6xHis construct. The No-His construct starts at
-residue 18 and the mHDX-MS construct at residue 20.
 
 ## Data model
 
-Dynamic PDB's model is used loosely. One protein is one entry, and every
-interpretation of its exchange data is a peer.
+Per protein there are three **entries**, each one experimental context as in Dynamic PDB
+v0.2.0 (`method` is a single field):
 
-| Dynamic PDB | Here | Example |
-| --- | --- | --- |
-| Entry | Protein construct + measurements | `hdx_z917r9ih` (EEHEE_rd4_0642) |
-| L0 Source | Raw instrument files, referenced | PRIDE `.raw`; NMR spectra (location not stated) |
-| L1 Processed | Isotope distributions per timepoint | Dataset_3 fields `exp_distribution`, `true_time` |
-| L2 Interpreted | ΔG landscapes and structures | mHDX-MS fit, HDX-NMR per-residue ΔG, PDB 8SKE |
-| L3 Evaluated | Agreement between interpretations | sorted-landscape RMSD, computed here |
-| Run | One software step with inputs and outputs | `mhdx_pipeline`, `hdxrate_pipeline`, this build |
+| Entry | Polymer entities | Samples (`hdx.samples`) | Models |
+| --- | --- | --- | --- |
+| mHDX-MS | the mHDX-MS construct | library, pH labels, 32 to 62 labeling times | hdxrate_pipeline fit: sorted site ΔG (`HDX ΔG set`) |
+| HDX-NMR | 6xHis and/or No-His constructs | one per measurement, with its own pH, temperature and buffer; means list the rows they average | per-residue ΔG, k_obs, k_int (`HDX ΔG set`) |
+| Reference structure | the deposited sequence | none | Deposited model, `purpose: Reference` |
 
-Rules kept from Dynamic PDB:
+- **Constructs are polymer entities, not separate entries.** Mutations would use
+  `mutations[]` (none added yet).
+- **The structure is its own entry.** v0.2.0 keeps `external_refs.pdb` unique across
+  active entries, so HDX entries cannot claim the PDB ID. HDX-NMR residue data instead
+  name the structure model as their `residue_frame`.
+- **Residue data use `label_*` keys** (`label_asym_id`, `label_seq_id`, `label_comp_id`)
+  with `auth_*` kept, as v0.2.0 specifies.
+- **Cross-entry views are derived, not declared.** Entries whose polymer-entity
+  sequences are contained in the same structure sequence form one view
+  (`views/view_<pdb>.json`). The Explore tab draws the view; the other tabs describe one
+  entry's record.
+- **IDs:** `hdx_` + 8 characters per entry, derived from a stable key so rebuilds keep them;
+  models `<entry>_m_NNN` as in v0.2.0.
 
-- **Absent is absent.** Prolines, the N-terminus and unmeasured amides are `null`, never 0.
-- **No winning model.** The deposited structure is one interpretation among others.
-- **Declare sources you do not hold.** The NMR spectra appear as an L0 artifact with
-  no URI, so the gap is visible.
-- **Every file gets a SHA-256** (`sources.lock.json`).
-- **Opaque IDs.** `hdx_` + 8 characters, derived from the protein name so rebuilds are stable.
+Levels follow v0.2.0: L0 raw files (PRIDE mzML; the NMR spectra are not located), L1
+processed files (Dataset_3, Dataset_4), L2 interpretations (the ΔG sets and the deposited
+model), L3 evaluations (agreement metrics computed here).
 
-Deviation, logged as an open question: Dynamic PDB defines L2 as *atomic* models. Here
-L2 also holds ΔG landscapes.
+### Extensions to Dynamic PDB v0.2.0
+
+Each entry lists the fields or values it uses that v0.2.0 does not define:
+
+- `hdx.samples`: an HDX experimental block, modeled on `crystallography.crystals[]`.
+- `model_type: "HDX ΔG set"`: an L2 interpretation without coordinates.
+- `site_data`: values for exchanging sites not assigned to residues (mHDX-MS).
+- Residue-data keys `dg`, `kobs`, `kint`, `logpf`, `too_slow`; metric keys `dg_max`,
+  `cooperativity`, `fit_rmse`, `idotp_max`, `backexchange_final` and others.
+- `residue_frame`: the reference model whose numbering the residue data use.
+- Run input/output `selector` (fields and rows within a shared multi-row file).
+- `undeclared_inputs`: a source with no URI, which v0.2.0 cannot register as an artifact.
+
+### Rules kept
+
+- **Absent is absent.** Unmeasured residues are `null`, never 0.
+- **No winning model.** The deposited structure is a reference for comparison and residue
+  numbering, not ground truth.
+- **Every file gets a SHA-256** (`sources.lock.json`), except the PRIDE mzML files: PRIDE
+  lists no checksum and the 1 GB files were not downloaded.
 
 ## How to use it
 
 Requirements: macOS or Linux, conda (or mamba), and an internet connection for the
-first fetch (about 290 MB).
+first fetch (about 300 MB).
 
 ```zsh
 conda env create -f environment.yml
 conda activate hdx-data-repo
 
 python pipeline/fetch.py            # download sources, write sources.lock.json
-python pipeline/build_entries.py    # build web/public/{index.json, entries/, structures/}
+python pipeline/build_entries.py    # build web/public/{index.json, entries/, views/, structures/}
 
 cd web
 npm ci
@@ -95,42 +114,39 @@ npm run dev                         # http://localhost:5173
 # or: npm run build && npx vite preview
 ```
 
-The built site (`web/dist/`) is static and can be served from any host. Routes:
+The built site (`web/dist/`) is static. Routes:
 
-- `#/` the list of HDX-MS entries; click one to open it
-- `#/entry/hdx_z917r9ih` the full entry; tabs: Explore, Overview, Interpretations,
+- `#/` the 10 HDX entries
+- `#/entry/<hdx_id>/<tab>`; tabs: Explore (cross-entry view), Overview, Models,
   Provenance, Downloads
 
 ### What the entry page shows
 
-- **Mol\* structure** colored by per-residue ΔG, log protection factor, predicted
-  deuteration at time *t*, or secondary structure. Grey means not measured.
-- **ΔG threshold slider.** Keep only sites at least X kcal/mol stable. This shows which
-  parts of the fold open last, and how many mHDX-MS sites reach the same stability.
-- **Time cursor.** Predicted deuteration per residue, D = 1 − e^(−k·t), from the NMR
-  rates. The cursor is shared with the mHDX-MS uptake plot.
-- **Sequence lanes** (from hetstar): sequence, secondary structure, construct coverage,
-  ΔG per condition, deuteration at *t*.
-- **Plots:** sorted energy landscape (mHDX-MS vs HDX-NMR), uptake curve, isotope
-  distributions over time, chiclet heatmap, butterfly, and a Woods-style ΔΔG plot with
-  replicate noise.
-- Hover or click a residue anywhere and the structure, lanes and residue plots follow.
-- **Per-value provenance.** Every metric, plot and structure coloring has a source line
-  (file · field · row) with a tier: *copied* (verbatim from an archived file) or
-  *computed here* (derived by this repository). Clicking it opens a card with the input
-  files and checksums, the upstream run chain at pinned commits, any operation applied
-  here with its code location, a copyable reproduce command (`jq` check), and whether
-  regeneration from raw data is possible or the raw input was not found. The Overview tab lists all of them
-  in one table. The records are the `derivations` list in each entry JSON.
+- **Linked entries** of the same view, in the header.
+- **Explore:** Mol\* structure colored by per-residue ΔG, log protection factor, predicted
+  deuteration at time *t*, or secondary structure; a ΔG threshold; sequence lanes (from
+  hetstar); sorted-ΔG, uptake, isotope-distribution, chiclet, butterfly and ΔΔG plots.
+  Hover and selection are shared between the structure, lanes and residue plots.
+- **Overview:** method, polymer entities, samples, metrics, the schema extensions used,
+  and a table of where each value comes from.
+- **Models:** the entry's models; for HDX entries, L3 agreement with the linked entry.
+- **Provenance:** the run graph of the linked entries, with this entry's nodes tinted,
+  and its artifacts (including the PRIDE mzML files with FTP links).
+- **Per-value provenance:** every metric, plot and structure coloring has a source line
+  (file · field · row) and a tier, *copied* or *computed here*. It opens a card with the
+  input files and checksums, the run chain at pinned commits, any operation applied here
+  with its code location, a `jq` check command, and whether regeneration from raw data is
+  possible or the raw input was not found.
 
 ## Repository layout
 
 ```
 environment.yml               conda environment (Python 3.12, Node 20)
 sources.lock.json             URL, SHA-256, size and license of every input; pinned commits
-schema/hdx_entry.v0.json      entry JSON Schema, draft 0.0.1
+schema/hdx_entry.v0.1.json    entry record schema (Dynamic PDB v0.2.0 names + extensions)
+schema/hdx_view.v0.1.json     cross-entry view schema (derived display record)
 pipeline/fetch.py             downloads sources into data/raw/ (git-ignored)
-pipeline/build_entries.py     joins sources, validates entries, writes web/public/
+pipeline/build_entries.py     builds entries and views, validates both, writes web/public/
 web/                          Vite + React 18 + TypeScript + Tailwind + Mol* 5.11 + Plotly
   src/vendor/hetstar/         code copied and trimmed from hetstar (each file says what changed)
   src/hdx/                    HDX-specific viewer code
@@ -142,56 +158,68 @@ out-of-date/                  earlier integration guide and figures (superseded)
 ## How it was developed
 
 - Developed in October 2026 from `planning-hdx-ms-data-repo.md`.
-- Field names in Zenodo Dataset_3 and Dataset_4 were read from the files themselves.
-  Units were not documented in the files: exchange rates are treated as s⁻¹ and
-  Dataset_3 `rates_*` as natural-log rates, consistent with the reported ΔG.
-- Dataset_4 rows 4 and 6 are the two 6xHis replicates; row 37 is their mean (checked
-  value by value). Row 33 repeats row 5 and is dropped.
-- Dataset_3 is one file at two levels, so it appears as two artifacts (`a_d3_iso` L1,
-  `a_d3_fit` L2) with the same URI and the fields each covers.
-- The L3 metrics compare the sorted mHDX-MS landscape with the No-His NMR landscape (the
-  closest construct) over the top-k sites. They are sketches computed here, not
-  published values.
+- Field names in Zenodo Dataset_3 and Dataset_4 were read from the files. Units are not
+  documented there: exchange rates are treated as s⁻¹ and Dataset_3 `rates_*` as
+  natural-log rates, consistent with the reported ΔG.
+- **Dataset_4 means are not replicate means.** Each per-construct "mean" row was matched,
+  by recomputation (maximum error 7 × 10⁻¹¹), to the rows it averages. Three average
+  measurements under different conditions: EEHEE_rd4_0871 No-His (293, 278, 293 K),
+  HHH_rd4_0518 No-His (278, 293 K), EHEE_rd2_0005 6xHis (pH 6.54 and 7.54). The site calls
+  each row a *measurement*, shows "mixed" conditions for such means, and says when a ΔΔG
+  spread includes condition effects.
+- Two mHDX-MS rows (HHH_rd4_0518, EHEE_rd2_0005) have no pH value; `merge_exp` and
+  `pH_index` show merged pH 6 and pH 9 series. Their uptake plots show one series per pH.
+- PRIDE file names encode library, pH, labeling time and replicate. Dataset_3 library
+  `mutants04` is assumed to be PRIDE `mut04`; this mapping is inferred, not documented.
+- The L3 metrics compare sorted mHDX-MS ΔG with the sorted ΔG of the closest HDX-NMR
+  construct over the top-k sites, matched by rank. They are exploratory and computed here.
 - The viewer adapts [hetstar](https://github.com/rtviii/hetstar) by rtviii (commit
-  `fc08cdb`), the heterogeneity viewer used in Dynamic PDB. Files were copied, not
-  forked, with Prism-internal permission. Each copied file names its source path and
-  changes.
+  `fc08cdb`), the heterogeneity viewer used in Dynamic PDB. Files were copied, not forked,
+  with Prism-internal permission; each copied file names its source path and changes.
 
 ### Verification done
 
 - `fetch.py` run twice gives identical hashes.
-- Every entry passes `schema/hdx_entry.v0.json` (checked in `build_entries.py`).
-- Spot checks against raw Dataset_4: residue 24 (6xHis r1) ΔG 3.1937 and residue 43
-  (6xHis mean) ΔG 5.74 match the page and the lanes.
-- Headless Chromium and Brave: the entry list and entry page load with no console errors; hover syncs
-  lanes and 3D; threshold and time modes recolor; layout holds at 390 px width.
+- Every entry and view passes its JSON Schema (checked in `build_entries.py`).
+- Spot checks against raw files: EEHEE_rd4_0642 residue 24 (6xHis measurement 1) ΔG
+  3.1937; EEHEE_rd4_0871 No-His measurement 2 residues V24, H25, V26, V29 match Dataset_4
+  row 11 in value and residue identity; EHEE_rd2_0005 ΔG max 9.1826 matches Dataset_3.
+- Brave (headless): all 5 tabs of all 15 entries load with no console errors.
 
 ## Scaling path (not built)
 
-- **More entries.** Add a protein to `PAGES` in `pipeline/build_entries.py` and it gets
-  a page and a row on the front page. Dataset_3 has 3,590 proteins; AlphaFold models (Zenodo Dataset_9) fill in structure where no PDB exists,
-  labeled as predicted.
-- **Peptide-level HDX-MS.** The classic continuous-labeling workflow fits the same
-  schema: L1 becomes a DynamX or HXMS uptake table, L2 a residue-level ΔD or ΔG from
-  peptide overlap, and HaDeX2-style plots (Woods, volcano, uptake curves) become native lanes.
-- **Reproducible filters.** A reader's quality thresholds become a recorded run, so a
-  shared link reproduces the filtered view.
-- **Deposition.** An agent drafts the entry from a paper's methods section and asks
-  only for what it cannot find. PRIDE stays the storage of record.
-- **Dynamic PDB.** The viewer shares hetstar's stack, so it can move into the
-  dynamic-pdb website later.
+- **More proteins.** Add a protein to `PAGES` with a structure whose sequence contains
+  its constructs. Dataset_3 has 3,590 proteins; mutants (e.g. EEHEE_rd4_0871_K31L_E36V)
+  would be polymer entities with `mutations[]`.
+- **Peptide-level HDX-MS.** The continuous-labeling workflow fits the same entry shape:
+  L1 a DynamX or HXMS uptake table, L2 residue-level ΔD or ΔG from peptide overlap.
+- **Reproducible filters.** A reader's quality thresholds become a recorded run.
+- **Deposition.** An agent drafts the entry from a paper's methods section; PRIDE stays
+  the storage of record.
 
 ## Open questions
 
-- Should ΔG landscapes count as Dynamic PDB L2, or need their own representation?
-- PRIDE lists PXD061702 as "Top-down proteomics"; worth a curation note to PRIDE.
-- 8SKE `_exptl.method` says solid-state NMR, while the experiment details describe
-  solution NMR.
+Decisions for the Dynamic PDB v0.2.0 open-decision list:
+
+1. Can an L2 model be a ΔG set without coordinates, or should HDX values be residue data
+   on the reference model?
+2. Definitions and producing software for HDX metric and residue keys.
+3. The HDX experimental block: pH or pD, temperature, buffer, labeling times, quench,
+   back-exchange correction.
+4. One level for a file holding processed data and fit results (Dataset_3, Dataset_4).
+5. Raw-data identity: SHA-256 for PRIDE files, and how to declare a source with no URI.
+6. Mutation numbering (design vs construct), already open in v0.2.0.
+
+Data questions:
+
+- How were measurements at different temperatures or pH combined into one ΔG mean?
 - Where are the HDX-NMR spectra deposited, if anywhere?
+- PRIDE lists PXD061702 as "Top-down proteomics"; 8SKE `_exptl.method` says solid-state
+  NMR while its experiment details describe solution NMR.
 - hetstar has no LICENSE file; ask rtviii to add one for the record.
 
 ## Citation and license
 
 Data: Ferrari et al., *Large-scale discovery, analysis, and design of protein energy
 landscapes*, Nature (2026), doi:10.1038/s41586-026-10465-z. Derived data here is
-CC-BY-4.0 following the Zenodo release; the 8SKE copy is CC0.
+CC-BY-4.0 following the Zenodo release; structure copies are CC0.

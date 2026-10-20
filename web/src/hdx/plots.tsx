@@ -5,9 +5,9 @@ import { trackFromJSON } from "../vendor/hetstar/tracks";
 import { SERIES, STABILITY_RAMP, DEUTERATION_RAMP } from "./colors";
 import { fmtTime } from "./data";
 import { SourceLine } from "./provenance-card";
-import { bySeq, nmrConditions, shortLabel, type EntryMetrics } from "./model";
+import { bySeq, conditionText, measurements, nmrConditions, representative, seriesColor, shortLabel, type EntryMetrics } from "./model";
 import Plot from "./Plot";
-import type { Entry, MhdxMeasurement } from "./types";
+import type { View, MhdxMeasurement } from "./types";
 
 // The entry's plots. Residue-axis plots (x = auth seq) share hover with the structure and
 // the lanes; time-axis plots share the time cursor with the deuteration coloring.
@@ -48,7 +48,7 @@ export function Card({
 }
 
 /** every residue plot spans the whole chain, so the plots line up with each other and the lanes */
-function residueAxis(entry: Entry): Partial<Plotly.LayoutAxis> {
+function residueAxis(entry: View): Partial<Plotly.LayoutAxis> {
   const ps = entry.chain.positions;
   return { title: { text: "residue (auth_seq_id)" }, range: [ps[0].seq - 0.5, ps[ps.length - 1].seq + 0.5], showgrid: false };
 }
@@ -73,7 +73,7 @@ function seqHandlers(links: PlotLinks) {
 
 // --- 1. sorted landscapes: the comparison mHDX can make ---------------------------------
 
-export function LandscapePlot({ entry, links }: { entry: Entry; links: PlotLinks }) {
+export function LandscapePlot({ entry, links }: { entry: View; links: PlotLinks }) {
   const data = useMemo(() => {
     const traces: Partial<Plotly.Data>[] = [];
     for (const m of entry.mhdx) {
@@ -90,7 +90,7 @@ export function LandscapePlot({ entry, links }: { entry: Entry; links: PlotLinks
       const y = t.values.filter((v): v is number => v != null).sort((a, b) => b - a);
       traces.push({
         type: "scatter", mode: "lines", name: `HDX-NMR ${shortLabel(c)}`,
-        x: y.map((_, i) => i + 1), y, line: { color: SERIES[c.id] ?? "#999", width: 1.5, dash: c.replicate === "mean" ? "solid" : "dot" },
+        x: y.map((_, i) => i + 1), y, line: { color: seriesColor(c), width: 1.5, dash: c.replicate === "mean" ? "solid" : "dot" },
         hovertemplate: `site %{x}<br>ΔG %{y:.2f} kcal/mol<extra>${shortLabel(c)}</extra>`,
       });
     }
@@ -124,7 +124,12 @@ function pickTimepoints(times: (number | null)[], n: number): number[] {
 }
 
 export function IsotopePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks }) {
-  const picks = useMemo(() => pickTimepoints(m.timepoints_s, 9), [m]);
+  // a merged measurement has a pH 6 and a pH 9 series; the ridgeline shows the first
+  const shownPH = m.pH_labels[0];
+  const picks = useMemo(
+    () => pickTimepoints(m.timepoints_s.map((t, i) => (m.pH_index[i] === shownPH ? t : null)), 9),
+    [m, shownPH],
+  );
   const nearest = useMemo(() => {
     let best = picks[0];
     for (const i of picks) {
@@ -171,7 +176,7 @@ export function IsotopePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks
     <Card
       title="Isotope distributions over time"
       prov="plot:isotope"
-      caption={<>Measured intact-protein isotope distributions (filled) and the distributions predicted by the rate fit (line), at 9 of {m.timepoints_s.length} labeling times. Each row is scaled to its maximum. Selecting a row sets the time cursor.</>}
+      caption={<>Measured intact-protein isotope distributions (filled) and the distributions predicted by the rate fit (line), at {picks.length} of {m.timepoints_s.length} labeling times{m.merged ? `; ${shownPH} series shown (this measurement merges ${m.pH_labels.join(" and ")})` : ""}. Each row is scaled to its maximum. Selecting a row sets the time cursor.</>}
     >
       <Plot
         data={data}
@@ -190,17 +195,25 @@ export function IsotopePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks
 
 export function UptakePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks }) {
   const data = useMemo<Partial<Plotly.Data>[]>(() => {
-    const pts = m.timepoints_s.map((t, i) => [t, m.exp_centroid[i], m.pred_centroid[i]] as const).filter(([t]) => t != null && t > 0);
-    return [
-      {
-        type: "scatter", mode: "markers", name: "measured centroid", x: pts.map((p) => p[0]), y: pts.map((p) => p[1]),
-        marker: { color: "#3d414f", size: 6 }, hovertemplate: "%{x:.0f} s<br>%{y:.2f} Da<extra>measured</extra>",
-      },
-      {
-        type: "scatter", mode: "lines", name: "fit centroid", x: pts.map((p) => p[0]), y: pts.map((p) => p[2]),
-        line: { color: SERIES.mhdx, width: 2 }, hovertemplate: "%{x:.0f} s<br>%{y:.2f} Da<extra>fit</extra>",
-      },
-    ];
+    const colors = [["#3d414f", SERIES.mhdx], ["#8a8d96", "#c2a5f5"]];
+    return m.pH_labels.flatMap((ph, k) => {
+      const pts = m.timepoints_s
+        .map((t, i) => [t, m.exp_centroid[i], m.pred_centroid[i], m.pH_index[i]] as const)
+        .filter(([t, , , p]) => t != null && t > 0 && p === ph)
+        .sort((a, b) => (a[0] as number) - (b[0] as number));
+      const tag = m.pH_labels.length > 1 ? ` ${ph}` : "";
+      const [cm, cf] = colors[Math.min(k, colors.length - 1)];
+      return [
+        {
+          type: "scatter", mode: "markers", name: `measured${tag}`, x: pts.map((p) => p[0]), y: pts.map((p) => p[1]),
+          marker: { color: cm, size: 6 }, hovertemplate: `%{x:.0f} s<br>%{y:.2f} Da<extra>measured${tag}</extra>`,
+        },
+        {
+          type: "scatter", mode: "lines", name: `fit${tag}`, x: pts.map((p) => p[0]), y: pts.map((p) => p[2]),
+          line: { color: cf, width: 2 }, hovertemplate: `%{x:.0f} s<br>%{y:.2f} Da<extra>fit${tag}</extra>`,
+        },
+      ] as Partial<Plotly.Data>[];
+    });
   }, [m]);
   const layout = useMemo<Partial<Plotly.Layout>>(() => ({
     xaxis: {
@@ -215,7 +228,7 @@ export function UptakePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks 
     <Card
       title="Deuterium uptake, intact protein"
       prov="plot:uptake"
-      caption="Centroids computed by this repository from the measured and predicted distributions, without back-exchange correction. The dotted line marks the time used for the structure coloring; selecting a point moves it."
+      caption={`Centroids computed by this repository from the measured and predicted distributions, without back-exchange correction.${m.merged ? " One series per pH label; times are as recorded (true_time) and are not converted between pH values." : ""} The dotted line marks the time used for the structure coloring; selecting a point moves it.`}
     >
       <Plot data={data} layout={layout} height={340} onClick={(e) => {
         const x = e.points[0]?.x;
@@ -227,7 +240,7 @@ export function UptakePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks 
 
 // --- 4. chiclet: residues x conditions ------------------------------------------------------
 
-export function ChicletPlot({ entry, em, links }: { entry: Entry; em: EntryMetrics; links: PlotLinks }) {
+export function ChicletPlot({ entry, em, links }: { entry: View; em: EntryMetrics; links: PlotLinks }) {
   const seqs = entry.chain.positions.map((p) => p.seq);
   const conds = nmrConditions(entry).filter((c) => entry.tracks[`dg:${c.id}`]);
   const data = useMemo<Partial<Plotly.Data>[]>(() => {
@@ -261,24 +274,26 @@ export function ChicletPlot({ entry, em, links }: { entry: Entry; em: EntryMetri
 
 // --- 5. butterfly: one construct against the other ----------------------------------------
 
-function trackMap(entry: Entry, key: string) {
+function trackMap(entry: View, key: string) {
   return entry.tracks[key] ? bySeq(trackFromJSON(entry.tracks[key])) : null;
 }
 
-export function ButterflyPlot({ entry, links }: { entry: Entry; links: PlotLinks }) {
-  const top = trackMap(entry, "dg:nmr_6xhis_mean");
-  const bottom = trackMap(entry, "dg:nmr_nohis_r1");
+export function ButterflyPlot({ entry, links }: { entry: View; links: PlotLinks }) {
+  const a = representative(entry, "6xHis");
+  const b = representative(entry, "No-His");
+  const top = a ? trackMap(entry, `dg:${a.id}`) : null;
+  const bottom = b ? trackMap(entry, `dg:${b.id}`) : null;
   const data = useMemo<Partial<Plotly.Data>[]>(() => {
-    if (!top || !bottom) return [];
+    if (!top || !bottom || !a || !b) return [];
     const ts = [...top.keys()];
     const bs = [...bottom.keys()];
     return [
-      { type: "bar", name: "6xHis (mean)", x: ts, y: ts.map((s) => top.get(s)!), marker: { color: SERIES.nmr_6xhis_mean },
-        hovertemplate: "residue %{x}<br>ΔG %{y:.2f}<extra>6xHis</extra>" },
-      { type: "bar", name: "No-His", x: bs, y: bs.map((s) => -bottom.get(s)!), marker: { color: SERIES.nmr_nohis_r1 },
-        customdata: bs.map((s) => bottom.get(s)!), hovertemplate: "residue %{x}<br>ΔG %{customdata:.2f}<extra>No-His</extra>" },
+      { type: "bar", name: a.label, x: ts, y: ts.map((s) => top.get(s)!), marker: { color: seriesColor(a) },
+        hovertemplate: `residue %{x}<br>ΔG %{y:.2f}<extra>${shortLabel(a)}</extra>` },
+      { type: "bar", name: b.label, x: bs, y: bs.map((s) => -bottom.get(s)!), marker: { color: seriesColor(b) },
+        customdata: bs.map((s) => bottom.get(s)!), hovertemplate: `residue %{x}<br>ΔG %{customdata:.2f}<extra>${shortLabel(b)}</extra>` },
     ];
-  }, [top, bottom]);
+  }, [top, bottom, a, b]);
   const layout = useMemo<Partial<Plotly.Layout>>(() => ({
     barmode: "overlay",
     xaxis: residueAxis(entry),
@@ -286,35 +301,45 @@ export function ButterflyPlot({ entry, links }: { entry: Entry; links: PlotLinks
     shapes: hoverColumn(links.hoverSeq),
     margin: { l: 52, r: 12, t: 8, b: 84 },
   }), [links.hoverSeq, entry]);
-  if (!top || !bottom) return null;
+  if (!top || !bottom || !a || !b) return null;
   return (
-    <Card title="ΔG per residue: 6xHis (mean) and No-His" prov="plot:butterfly" caption="No-His values are plotted as negative.">
+    <Card title={`ΔG per residue: ${a.label} and ${b.label}`} prov="plot:butterfly" caption="No-His values are plotted as negative.">
       <Plot data={data} layout={layout} height={280} {...seqHandlers(links)} />
     </Card>
   );
 }
 
-// --- 6. Woods-style difference with replicate noise -----------------------------------------
+// --- 6. Woods-style difference with measurement spread -----------------------------------------
 
-export function TagEffectPlot({ entry, links }: { entry: Entry; links: PlotLinks }) {
-  const mean = trackMap(entry, "dg:nmr_6xhis_mean");
-  const r1 = trackMap(entry, "dg:nmr_6xhis_r1");
-  const r2 = trackMap(entry, "dg:nmr_6xhis_r2");
-  const nohis = trackMap(entry, "dg:nmr_nohis_r1");
+export function TagEffectPlot({ entry, links }: { entry: View; links: PlotLinks }) {
+  const a = representative(entry, "6xHis");
+  const b = representative(entry, "No-His");
+  const noisy = useMemo(
+    () => ["6xHis", "No-His"].map((c) => measurements(entry, c)).filter((rs) => rs.length >= 2),
+    [entry],
+  );
   const rows = useMemo(() => {
-    if (!mean || !nohis || !r1 || !r2) return [];
-    return [...mean.keys()]
-      .filter((s) => nohis.has(s))
+    if (!a || !b) return [];
+    const ma = trackMap(entry, `dg:${a.id}`)!;
+    const mb = trackMap(entry, `dg:${b.id}`)!;
+    const reps = noisy.map((rs) => rs.map((c) => trackMap(entry, `dg:${c.id}`)!));
+    return [...ma.keys()]
+      .filter((s) => mb.has(s))
       .map((s) => {
-        const d = mean.get(s)! - nohis.get(s)!;
-        const noise = r1.has(s) && r2.has(s) ? Math.abs(r1.get(s)! - r2.get(s)!) / 2 : null;
-        return { s, d, noise, beyond: noise != null && Math.abs(d) > 2 * noise };
+        const d = ma.get(s)! - mb.get(s)!;
+        // largest range (max - min) at this residue among constructs with >= 2 measurements
+        const ranges = reps
+          .map((ms) => ms.map((m) => m.get(s)).filter((v): v is number => v != null))
+          .filter((vs) => vs.length >= 2)
+          .map((vs) => Math.max(...vs) - Math.min(...vs));
+        const range = ranges.length ? Math.max(...ranges) : null;
+        return { s, d, range, beyond: range != null && Math.abs(d) > range };
       });
-  }, [mean, nohis, r1, r2]);
+  }, [entry, a, b, noisy]);
   const data = useMemo<Partial<Plotly.Data>[]>(() => [{
     type: "bar", x: rows.map((r) => r.s), y: rows.map((r) => r.d),
     marker: { color: rows.map((r) => (r.beyond ? hex(DEUTERATION_RAMP[r.d > 0 ? 0 : 2]) : "#c8cdd4")) },
-    error_y: { type: "data", array: rows.map((r) => (r.noise ?? 0) * 2), visible: true, color: "#5f616b", thickness: 1, width: 2 },
+    error_y: { type: "data", array: rows.map((r) => r.range ?? 0), visible: true, color: "#5f616b", thickness: 1, width: 2 },
     hovertemplate: "residue %{x}<br>ΔΔG %{y:.2f} kcal/mol<extra></extra>",
   }], [rows]);
   const layout = useMemo<Partial<Plotly.Layout>>(() => ({
@@ -323,13 +348,17 @@ export function TagEffectPlot({ entry, links }: { entry: Entry; links: PlotLinks
     shapes: hoverColumn(links.hoverSeq),
     showlegend: false,
   }), [links.hoverSeq, entry]);
-  if (!rows.length) return null;
+  if (!rows.length || !a || !b) return null;
   const n = rows.filter((r) => r.beyond).length;
+  const differ = noisy.filter((rs) => new Set(rs.map(conditionText)).size > 1).map((rs) => rs[0].construct);
+  const noiseText = noisy.length
+    ? `Whiskers: largest range (max − min) at each residue across the measurements of ${noisy.map((rs) => `${rs[0].construct} (${rs.length})`).join(" and ")}. ${n} of ${rows.length} residues have |ΔΔG| outside this range (blue: higher ΔG in 6xHis; red: lower).${differ.length ? ` The ${differ.join(" and ")} measurements differ in labeling conditions, so the range includes condition effects as well as measurement variation.` : ""}`
+    : "No construct has two or more measurements, so no range is shown.";
   return (
     <Card
       title="ΔΔG per residue, 6xHis minus No-His"
       prov="plot:woods"
-      caption={<>Bars: ΔΔG = ΔG(6xHis mean) − ΔG(No-His). Whiskers: ±|r1 − r2| from the two 6xHis replicates. {n} of {rows.length} residues have |ΔΔG| outside this range (blue: higher ΔG in 6xHis; red: lower). No-His has one replicate, so its variability is not included. This is not a statistical test.</>}
+      caption={<>Bars: ΔΔG = ΔG({a.label}) − ΔG({b.label}). {noiseText} This is not a statistical test.</>}
     >
       <Plot data={data} layout={layout} height={260} {...seqHandlers(links)} />
     </Card>

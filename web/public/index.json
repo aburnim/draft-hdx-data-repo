@@ -1,21 +1,138 @@
 {
-  "schema_version": "0.0.1",
+  "schema_version": "0.1.0",
   "entries": [
     {
-      "id": "hdx_z917r9ih",
+      "id": "hdx_b34v7hqq",
       "name": "EEHEE_rd4_0642",
-      "title": "Solution structure of the model miniprotein EEHEE_rd4_0642",
-      "origin": "de novo design",
-      "topology": "EEHEE",
-      "length": 64,
-      "methods": [
-        "mHDX-MS",
-        "HDX-NMR"
+      "method": "mHDX-MS",
+      "samples": 1,
+      "constructs": [
+        "mHDX-MS construct"
       ],
-      "n_conditions": 5,
+      "dg_max": 4.9124,
       "pdb": "8SKE",
-      "pride": "PXD061702",
-      "dg_max": 4.9124
+      "structure_entry": "hdx_j5an4wkv",
+      "raw": "PRIDE PXD061702"
+    },
+    {
+      "id": "hdx_aq1eyii2",
+      "name": "EEHEE_rd4_0642",
+      "method": "HDX-NMR",
+      "samples": 4,
+      "constructs": [
+        "6xHis",
+        "No-His"
+      ],
+      "dg_max": null,
+      "pdb": "8SKE",
+      "structure_entry": "hdx_j5an4wkv",
+      "raw": null
+    },
+    {
+      "id": "hdx_eaysx15c",
+      "name": "EEHEE_rd4_0871",
+      "method": "mHDX-MS",
+      "samples": 1,
+      "constructs": [
+        "mHDX-MS construct"
+      ],
+      "dg_max": 5.4088,
+      "pdb": "8SKD",
+      "structure_entry": "hdx_r1qmt30e",
+      "raw": "PRIDE PXD061702"
+    },
+    {
+      "id": "hdx_9r683onk",
+      "name": "EEHEE_rd4_0871",
+      "method": "HDX-NMR",
+      "samples": 7,
+      "constructs": [
+        "6xHis",
+        "No-His"
+      ],
+      "dg_max": null,
+      "pdb": "8SKD",
+      "structure_entry": "hdx_r1qmt30e",
+      "raw": null
+    },
+    {
+      "id": "hdx_qi8qs6u6",
+      "name": "HHH_rd4_0518",
+      "method": "mHDX-MS",
+      "samples": 1,
+      "constructs": [
+        "mHDX-MS construct"
+      ],
+      "dg_max": 7.1026,
+      "pdb": "8SKX",
+      "structure_entry": "hdx_1m8yws2a",
+      "raw": "PRIDE PXD061702"
+    },
+    {
+      "id": "hdx_vpth8mwg",
+      "name": "HHH_rd4_0518",
+      "method": "HDX-NMR",
+      "samples": 4,
+      "constructs": [
+        "6xHis",
+        "No-His"
+      ],
+      "dg_max": null,
+      "pdb": "8SKX",
+      "structure_entry": "hdx_1m8yws2a",
+      "raw": null
+    },
+    {
+      "id": "hdx_pvr06925",
+      "name": "HEEH_rd4_0097",
+      "method": "mHDX-MS",
+      "samples": 1,
+      "constructs": [
+        "mHDX-MS construct"
+      ],
+      "dg_max": 4.4293,
+      "pdb": "5UYO",
+      "structure_entry": "hdx_5g2p5l1c",
+      "raw": "PRIDE PXD061702"
+    },
+    {
+      "id": "hdx_ndlqvw2b",
+      "name": "HEEH_rd4_0097",
+      "method": "HDX-NMR",
+      "samples": 1,
+      "constructs": [
+        "6xHis"
+      ],
+      "dg_max": null,
+      "pdb": "5UYO",
+      "structure_entry": "hdx_5g2p5l1c",
+      "raw": null
+    },
+    {
+      "id": "hdx_jwyqznhy",
+      "name": "EHEE_rd2_0005",
+      "method": "mHDX-MS",
+      "samples": 1,
+      "constructs": [
+        "mHDX-MS construct"
+      ],
+      "dg_max": 9.1826,
+      "pdb": "8SHM",
+      "structure_entry": "hdx_0zpo5my9",
+      "raw": "PRIDE PXD061702"
+    },
+    {
+      "id": "hdx_9zhcsvdw",
+      "name": "EHEE_rd2_0005",
+      "method": "HDX-NMR",
+      "samples": 3,
+      "constructs": [
+        "6xHis"
+      ],
+      "dg_max": null,
+      "pdb": "8SHM",
+      "structure_entry": "hdx_0zpo5my9",
+      "raw": null
     }
   ]
 }

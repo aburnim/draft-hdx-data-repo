@@ -14,10 +14,10 @@ import { DEUTERATION_RAMP, FADED_COLOR, MISSING_COLOR, SERIES, STABILITY_RAMP } 
 import { fmt, fmtTime, useText } from "./data";
 import { constructLane, type ConstructSpan } from "./lanes";
 import {
-  colorTable, deuterationMetric, entryMetrics, MODE_LABELS, nmrConditions, rampGradient, shortLabel, type ColorMode,
+  colorTable, conditionText, constructsOf, deuterationMetric, entryMetrics, MODE_LABELS, nmrConditions, rampGradient, representative, seriesColor, shortLabel, type ColorMode,
 } from "./model";
 import { ButterflyPlot, ChicletPlot, IsotopePlot, LandscapePlot, TagEffectPlot, UptakePlot, type PlotLinks } from "./plots";
-import type { Entry } from "./types";
+import type { View } from "./types";
 import { SourceLine } from "./provenance-card";
 import { setResidueColors } from "./value-theme";
 
@@ -28,7 +28,7 @@ const REPRESENTATIONS: ExampleRepresentation[] = ["cartoon", "putty", "ball-and-
 const T_MIN = 1; // log10 seconds
 const T_MAX = 6.5;
 
-export default function Explorer({ entry }: { entry: Entry }) {
+export default function Explorer({ entry }: { entry: View }) {
   const em = useMemo(() => entryMetrics(entry), [entry]);
   const nmr = useMemo(() => nmrConditions(entry), [entry]);
   const seqModel = useMemo(() => sequenceModelFromJSON(entry.chain), [entry]);
@@ -49,7 +49,7 @@ export default function Explorer({ entry }: { entry: Entry }) {
 
   const cif = useText(entry.external_refs.pdb ? `structures/${entry.external_refs.pdb}.cif` : null);
 
-  // kobs is per replicate; a mean condition borrows its construct's first replicate
+  // kobs is per measurement; a mean condition borrows its construct's first measurement
   const kobsKey = useMemo(() => {
     if (entry.tracks[`kobs:${cid}`]) return `kobs:${cid}`;
     const c = nmr.find((x) => x.id === cid);
@@ -73,12 +73,12 @@ export default function Explorer({ entry }: { entry: Entry }) {
     return m;
   }, [em, deut]);
   const metricLanes = useMemo(() => {
-    const defaults = new Set(["dg:nmr_6xhis_mean", "dg:nmr_nohis_r1"]);
+    const defaults = new Set(constructsOf(entry).map((c) => representative(entry, c)).filter(Boolean).map((c) => `dg:${c!.id}`));
     return [
       makeMetricLane("deut", "D at time t", "fraction deuterated at the time cursor, from per-residue NMR exchange rates", true),
       ...[...em.byKey.values()].map((m) => makeMetricLane(m.id, m.name, `${m.name} (${m.unit ?? "unitless"})`, defaults.has(m.id))),
     ];
-  }, [em]);
+  }, [em, entry]);
   const extraLanes = useMemo(() => {
     const last = entry.chain.positions[entry.chain.positions.length - 1].seq;
     const spans: ConstructSpan[] = [];
@@ -87,7 +87,7 @@ export default function Explorer({ entry }: { entry: Entry }) {
       const t = entry.tracks[`dg:${c.id}`];
       if (!t || !c.construct || seen.has(c.construct)) continue;
       seen.add(c.construct);
-      spans.push({ id: c.construct, label: `NMR ${c.construct}`, color: SERIES[c.id] ?? "#999", from: t.keys[0].seq, to: t.keys[t.keys.length - 1].seq });
+      spans.push({ id: c.construct, label: `NMR ${c.construct}`, color: seriesColor(representative(entry, c.construct) ?? c), from: t.keys[0].seq, to: t.keys[t.keys.length - 1].seq });
     }
     for (const m of entry.mhdx) {
       if (m.first_auth_seq != null) spans.push({ id: m.id, label: "mHDX-MS", color: SERIES.mhdx, from: m.first_auth_seq, to: last });
@@ -234,7 +234,7 @@ export default function Explorer({ entry }: { entry: Entry }) {
               <select value={cid} onChange={(e) => setCid(e.target.value)} className="w-full rounded border border-line-strong bg-white px-2 py-1 focus:border-accent focus:outline-none">
                 {conditionChoices.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.label} · pH {c.pH} · {c.temp_K} K · {c.buffer}
+                    {c.label} · {conditionText(c)}
                   </option>
                 ))}
               </select>

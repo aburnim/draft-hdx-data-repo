@@ -3,7 +3,7 @@ import { residueKey } from "../vendor/hetstar/keys";
 import type { LaneMetric } from "../vendor/hetstar/lanes/types";
 import { makeTrack, trackFromJSON, type Track } from "../vendor/hetstar/tracks";
 import { DEUTERATION_RAMP, FADED_COLOR, STABILITY_RAMP } from "./colors";
-import type { Condition, Entry } from "./types";
+import type { Condition, View } from "./types";
 
 export type ColorMode = "dg" | "logpf" | "deut" | "sse";
 
@@ -16,16 +16,16 @@ export const MODE_LABELS: Record<ColorMode, string> = {
 
 export function shortLabel(c: Condition): string {
   if (c.method === "mHDX-MS") return `mHDX ${c.pH ?? ""}`.trim();
-  const rep = c.replicate === "mean" ? "mean" : `r${c.replicate}`;
+  const rep = c.replicate === "mean" ? "mean" : `#${c.replicate}`;
   return `${c.construct} ${rep}`;
 }
 
-export function nmrConditions(entry: Entry): Condition[] {
+export function nmrConditions(entry: View): Condition[] {
   return entry.conditions.filter((c) => c.method === "HDX-NMR");
 }
 
 /** one domain for every track of a kind, so switching condition never rescales colors */
-function sharedDomain(entry: Entry, kind: string, step: number): [number, number] {
+function sharedDomain(entry: View, kind: string, step: number): [number, number] {
   let lo = Infinity;
   let hi = -Infinity;
   for (const [k, t] of Object.entries(entry.tracks)) {
@@ -47,7 +47,7 @@ export interface EntryMetrics {
   logpfDomain: [number, number];
 }
 
-export function entryMetrics(entry: Entry): EntryMetrics {
+export function entryMetrics(entry: View): EntryMetrics {
   const dgDomain = sharedDomain(entry, "dg", 0.5);
   const logpfDomain = sharedDomain(entry, "logpf", 0.5);
   const byKey = new Map<string, LaneMetric>();
@@ -128,4 +128,40 @@ export function bySeq(track: Track): Map<number, number> {
     if (!Number.isNaN(track.values[i])) m.set(k.seq, track.values[i]);
   });
   return m;
+}
+
+// --- constructs and measurements ----------------------------------------------------------
+
+const CONSTRUCT_SHADES: Record<string, string[]> = {
+  "6xHis": ["#b35806", "#e08214", "#fdb863", "#fee0b6"],
+  "No-His": ["#1b7837", "#5aae61", "#a6dba0", "#d9f0d3"],
+};
+
+/** fixed color per condition: the construct's darkest shade for its mean, lighter per measurement */
+export function seriesColor(c: Condition): string {
+  const shades = CONSTRUCT_SHADES[c.construct ?? ""] ?? ["#3d414f", "#5f616b", "#8a8d96", "#b4b7bf"];
+  if (c.replicate === "mean") return shades[0];
+  const r = typeof c.replicate === "number" ? c.replicate : 1;
+  return shades[Math.min(shades.length - 1, r)];
+}
+
+/** the condition that stands for a construct: its mean if reported, else its first measurement */
+export function representative(view: View, construct: string): Condition | null {
+  const cs = nmrConditions(view).filter((c) => c.construct === construct && view.tracks[`dg:${c.id}`]);
+  return cs.find((c) => c.replicate === "mean") ?? cs[0] ?? null;
+}
+
+/** individual measurements of a construct (the mean excluded); their conditions can differ */
+export function measurements(view: View, construct: string): Condition[] {
+  return nmrConditions(view).filter((c) => c.construct === construct && c.replicate !== "mean" && view.tracks[`dg:${c.id}`]);
+}
+
+export function constructsOf(view: View): string[] {
+  return [...new Set(nmrConditions(view).map((c) => c.construct ?? ""))].filter(Boolean).sort();
+}
+
+/** "pH 6.3 · 293 K · MES", with "mixed" where a mean averages different conditions */
+export function conditionText(c: Condition): string {
+  const v = (x: unknown, unit = "") => (x == null ? (c.conditions_differ ? "mixed" : "not reported") : `${x}${unit}`);
+  return `pH ${v(c.pH)} · ${v(c.temp_K, " K")} · ${v(c.buffer)}`;
 }

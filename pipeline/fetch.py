@@ -44,14 +44,25 @@ SOURCES = [
         "level": "L1",
         "title": "mHDX-MS isotope distributions and fitted exchange rates, measurably stable domains",
     },
-    {
-        "id": "pdb_8ske",
-        "file": "8SKE.cif",
-        "url": "https://files.rcsb.org/download/8SKE.cif",
-        "license": "CC0-1.0",
-        "level": "L2",
-        "title": "PDB 8SKE, NMR solution structure of EEHEE_rd4_0642 (20 models)",
-    },
+    # Reference structures: each PDB sequence is identical to the 6xHis HDX-NMR construct
+    # of the protein named in its title (checked against Dataset_4).
+    *[
+        {
+            "id": f"pdb_{pdb.lower()}",
+            "file": f"{pdb}.cif",
+            "url": f"https://files.rcsb.org/download/{pdb}.cif",
+            "license": "CC0-1.0",
+            "level": "L2",
+            "title": f"PDB {pdb}, NMR structure of {name}",
+        }
+        for pdb, name in [
+            ("8SKE", "EEHEE_rd4_0642"),
+            ("8SKD", "EEHEE_rd4_0871"),
+            ("8SKX", "HHH_rd4_0518"),
+            ("5UYO", "HEEH_rd4_0097"),
+            ("8SHM", "EHEE_rd2_0005"),
+        ]
+    ],
     {
         "id": "pride_pxd061702",
         "file": "PXD061702.json",
@@ -59,6 +70,14 @@ SOURCES = [
         "license": "CC0-1.0",
         "level": "L0",
         "title": "PRIDE project record for the raw mHDX-MS files",
+    },
+    {
+        "id": "pride_pxd061702_files",
+        "file": "PXD061702_files.json",
+        "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD061702/files/all",
+        "license": "CC0-1.0",
+        "level": "L0",
+        "title": "PRIDE file listing for PXD061702 (names, sizes, FTP locations)",
     },
 ]
 

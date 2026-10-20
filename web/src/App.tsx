@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 
+import ErrorBoundary from "./ErrorBoundary";
 import Browse from "./pages/Browse";
 
 // Mol* is most of the bundle; only entry pages need it.
@@ -23,7 +24,11 @@ function useRoute(): string[] {
 
 export default function App() {
   const [page, id, tab] = useRoute();
-  useEffect(() => window.scrollTo(0, 0), [page, id]);
+  // Braces matter: newer Chromium returns a Promise from scrollTo, and an effect that
+  // returns a non-function crashes React ("destroy is not a function").
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [page, id]);
   return (
     <div className="min-h-screen bg-surface-muted/60">
       <header className="border-b border-line bg-white">
@@ -40,13 +45,15 @@ export default function App() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">
-        {page === "entry" && id ? (
-          <Suspense fallback={<p className="text-ink-muted">Loading viewer…</p>}>
-            <Entry id={id} tab={tab ?? "explore"} />
-          </Suspense>
-        ) : (
-          <Browse />
-        )}
+        <ErrorBoundary key={`${page}/${id}`}>
+          {page === "entry" && id ? (
+            <Suspense fallback={<p className="text-ink-muted">Loading viewer…</p>}>
+              <Entry id={id} tab={tab ?? "explore"} />
+            </Suspense>
+          ) : (
+            <Browse />
+          )}
+        </ErrorBoundary>
       </main>
       <footer className="mx-auto max-w-7xl px-4 pb-8 text-[11px] text-ink-muted">
         Data: Ferrari et al. 2026, Zenodo 10.5281/zenodo.14983481 (CC-BY-4.0); raw spectra PRIDE PXD061702; structure PDB 8SKE (CC0).

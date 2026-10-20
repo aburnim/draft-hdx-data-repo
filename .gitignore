@@ -1,0 +1,6 @@
+.DS_Store
+data/raw/
+web/node_modules/
+web/dist/
+__pycache__/
+.vscode/

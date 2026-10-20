@@ -1,8 +1,8 @@
-"""Build entry records and the browse index from the pinned sources.
+"""Build entry records and the entry list from the pinned sources.
 
 Reads data/raw/ (see fetch.py) and writes, under web/public/:
-  index.json                     one row per mHDX-MS measurement in Dataset_3 (all domains)
-  entries/<id>.json              full entry records (only proteins listed in PAGES for now)
+  index.json                     one row per entry (the front page list)
+  entries/<id>.json              full entry records (the proteins listed in PAGES)
   entries/<id>.residues.csv      per-residue HDX-NMR values of that entry
   structures/<pdb>.cif           coordinates the entry pages load
 
@@ -40,15 +40,12 @@ DOI = "10.1038/s41586-026-10465-z"
 PRIDE = "PXD061702"
 ZENODO_DOI = "10.5281/zenodo.14983481"
 
-# Dataset_3 columns kept for every row (the browse index) ...
-SUMMARY_COLS = {
+# Dataset_3 columns an entry uses.
+D3_COLS = {
     "name", "library", "pH", "sequence", "PF", "RT", "group",
     "dg_max", "dg_mean", "dg_median", "n_exch_res",
     "normalized_cooperativity_model_global", "rate_fitting_rmse_total",
     "max_idotp", "backexchange_final_tp",
-}
-# ... and only for rows that get a page.
-DETAIL_COLS = SUMMARY_COLS | {
     "true_time", "exp_distribution", "pred_distribution", "backexchange",
     "free_energy", "rates_mean", "rates_ci_5", "rates_ci_95",
     "cooperativity_model_global", "rate_fitting_rmse_max", "n_protected_res",
@@ -100,10 +97,10 @@ def rounded(xs, nd=4):
 
 
 def read_dataset3() -> dict[str, dict]:
-    """Stream the 286 MB column-oriented JSON once, keeping summary columns for every row
-    and detail columns only for page rows. Returns {row_id: {col: value}}."""
+    """Stream the 286 MB column-oriented JSON once, keeping only the rows of PAGES proteins.
+    Returns {row_id: {col: value}}."""
     rows: dict[str, dict] = {}
-    detail_rows: set[str] = set()
+    page_rows: set[str] = set()
     col = row = None
     builder: ObjectBuilder | None = None
 
@@ -122,15 +119,15 @@ def read_dataset3() -> dict[str, dict]:
                 finish()
                 if event == "map_key":
                     row = value
-                    keep = col in SUMMARY_COLS or (col in DETAIL_COLS and row in detail_rows)
+                    keep = col == "name" or (col in D3_COLS and row in page_rows)
                     builder = ObjectBuilder() if keep else None
                 elif col == "name":
-                    # name is the first column; from here on we know which rows get detail
-                    detail_rows = {r for r, v in rows.items() if v.get("name") in PAGES}
+                    # name is the first column; from here on we know which rows to keep
+                    page_rows = {r for r, v in rows.items() if v.get("name") in PAGES}
                 continue
             if builder is not None:
                 builder.event(event, value)
-    return rows
+    return {r: v for r, v in rows.items() if r in page_rows}
 
 
 def read_dataset4() -> list[dict]:
@@ -376,41 +373,36 @@ def build_entry(name: str, pdb: str, d3_rows: list[dict], d4_rows: list[dict]) -
     return entry, residue_rows
 
 
-# --- index -----------------------------------------------------------------------------
+# --- entry list ------------------------------------------------------------------------
 
 
-def index_rows(d3: dict[str, dict], nmr_names: set[str]) -> list[dict]:
-    out = []
-    for rid, r in sorted(d3.items(), key=lambda x: int(x[0])):
-        name = r["name"]
-        origin, accession = origin_of(name)
-        out.append({
-            "id": opaque_id(name), "row": int(rid), "name": name, "origin": origin,
-            "uniprot": accession if origin == "natural domain" else None,
-            "source_pdb": accession if origin == "PDB-derived domain" else None,
-            "topology": r.get("PF"), "library": r.get("library"), "pH": r.get("pH"),
-            "length": len(r.get("sequence") or ""),
-            "dg_max": num(r.get("dg_max")), "dg_median": num(r.get("dg_median")),
-            "coop": num(r.get("normalized_cooperativity_model_global")),
-            "rmse": num(r.get("rate_fitting_rmse_total")), "idotp": num(r.get("max_idotp")),
-            "backex": num(r.get("backexchange_final_tp")), "n_exch": num(r.get("n_exch_res")),
-            "nmr": name in nmr_names, "pdb": PAGES.get(name), "page": name in PAGES,
-        })
-    for row in out:
-        for k, v in row.items():
-            if isinstance(v, float):
-                row[k] = round(v, 3)
-    return out
+def list_row(entry: dict) -> dict:
+    """What the front page shows for one entry."""
+    metric = {m["key"]: m["value"] for m in entry["metrics"]}
+    return {
+        "id": entry["id"],
+        "name": entry["name"],
+        "title": entry["title"],
+        "origin": entry["protein"]["origin"],
+        "topology": entry["protein"]["topology"],
+        "length": len(entry["chain"]["positions"]),
+        "methods": sorted({c["method"] for c in entry["conditions"]}, reverse=True),
+        "n_conditions": len(entry["conditions"]),
+        "pdb": entry["external_refs"]["pdb"],
+        "pride": entry["external_refs"]["pride"],
+        "dg_max": metric.get("dg_max"),
+    }
 
 
 def main() -> None:
     d3 = read_dataset3()
     d4 = read_dataset4()
+    listed = []
     (OUT / "entries").mkdir(parents=True, exist_ok=True)
     (OUT / "structures").mkdir(parents=True, exist_ok=True)
 
     for name, pdb in PAGES.items():
-        rows = [(rid, r) for rid, r in d3.items() if r["name"] == name and "exp_distribution" in r]
+        rows = [(rid, r) for rid, r in d3.items() if r["name"] == name]
         entry, residues = build_entry(name, pdb, rows, d4)
         jsonschema.validate(entry, SCHEMA)
         (OUT / "entries" / f"{entry['id']}.json").write_text(json.dumps(entry, separators=(",", ":")))
@@ -419,18 +411,14 @@ def main() -> None:
             w.writeheader()
             w.writerows(residues)
         shutil.copyfile(RAW / f"{pdb}.cif", OUT / "structures" / f"{pdb}.cif")
+        listed.append(list_row(entry))
         print(f"{entry['id']}  {name}  conditions={len(entry['conditions'])} tracks={len(entry['tracks'])} mhdx={len(entry['mhdx'])}")
     shutil.copyfile(ROOT / "sources.lock.json", OUT / "sources.lock.json")
     (OUT / "schema").mkdir(exist_ok=True)
     shutil.copyfile(ROOT / "schema" / "hdx_entry.v0.json", OUT / "schema" / "hdx_entry.v0.json")
 
-    index = index_rows(d3, {r["name"] for r in d4})
-    (OUT / "index.json").write_text(json.dumps({
-        "schema_version": "0.0.1",
-        "source": {"zenodo": ZENODO_DOI, "file": "Dataset_3_MeasurablyStable.json", "sha256": LOCK["zenodo_dataset3"]["sha256"]},
-        "rows": index,
-    }, separators=(",", ":")))
-    print(f"index: {len(index)} measurements, {len({r['name'] for r in index})} proteins")
+    (OUT / "index.json").write_text(json.dumps({"schema_version": "0.0.1", "entries": listed}, indent=2) + "\n")
+    print(f"index: {len(listed)} entries")
 
 
 if __name__ == "__main__":

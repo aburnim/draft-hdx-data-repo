@@ -5,8 +5,8 @@ provenance from every plotted value back to the archived source files. Built for
 Prism project (Astera Institute) as a first test of how HDX-MS could sit alongside
 Dynamic PDB.
 
-Status: prototype, schema `0.0.1` (rough draft). One full entry page, plus a browse
-index of every protein in the source release.
+Status: prototype, schema `0.0.1` (rough draft). A front page listing HDX-MS entries,
+and one full entry page so far.
 
 ## The problem
 
@@ -97,7 +97,7 @@ npm run dev                         # http://localhost:5173
 
 The built site (`web/dist/`) is static and can be served from any host. Routes:
 
-- `#/` browse all 3,590 measured proteins, with your own quality thresholds
+- `#/` the list of HDX-MS entries; click one to open it
 - `#/entry/hdx_z917r9ih` the full entry; tabs: Explore, Overview, Interpretations,
   Provenance, Downloads
 
@@ -127,7 +127,7 @@ pipeline/build_entries.py     joins sources, validates entries, writes web/publi
 web/                          Vite + React 18 + TypeScript + Tailwind + Mol* 5.11 + Plotly
   src/vendor/hetstar/         code copied and trimmed from hetstar (each file says what changed)
   src/hdx/                    HDX-specific viewer code
-  src/pages/                  Browse and Entry pages
+  src/pages/                  entry list (Browse.tsx) and entry page
   public/                     generated data the site serves
 out-of-date/                  earlier integration guide and figures (superseded)
 ```
@@ -156,13 +156,13 @@ out-of-date/                  earlier integration guide and figures (superseded)
 - Every entry passes `schema/hdx_entry.v0.json` (checked in `build_entries.py`).
 - Spot checks against raw Dataset_4: residue 24 (6xHis r1) ΔG 3.1937 and residue 43
   (6xHis mean) ΔG 5.74 match the page and the lanes.
-- Headless Chromium: browse and entry pages load with no console errors; hover syncs
+- Headless Chromium and Brave: the entry list and entry page load with no console errors; hover syncs
   lanes and 3D; threshold and time modes recolor; layout holds at 390 px width.
 
 ## Scaling path (not built)
 
-- **All proteins.** `build_entry` already loops by name. Every Dataset_3 protein can get
-  a page; AlphaFold models (Zenodo Dataset_9) fill in structure where no PDB exists,
+- **More entries.** Add a protein to `PAGES` in `pipeline/build_entries.py` and it gets
+  a page and a row on the front page. Dataset_3 has 3,590 proteins; AlphaFold models (Zenodo Dataset_9) fill in structure where no PDB exists,
   labeled as predicted.
 - **Peptide-level HDX-MS.** The classic continuous-labeling workflow fits the same
   schema: L1 becomes a DynamX or HXMS uptake table, L2 a residue-level ΔD or ΔG from

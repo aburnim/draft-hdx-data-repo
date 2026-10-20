@@ -99,32 +99,22 @@ export interface Entry {
   citation: string;
 }
 
-export interface IndexRow {
+/** one row of web/public/index.json: the front page list */
+export interface EntryListRow {
   id: string;
-  row: number;
   name: string;
-  origin: "de novo design" | "design variant" | "natural domain" | "PDB-derived domain";
-  uniprot: string | null;
-  /** the PDB entry a PDB-derived domain was taken from (not the measured construct) */
-  source_pdb: string | null;
+  title: string;
+  origin: string;
   topology: string | null;
-  library: string | null;
-  pH: string | null;
   length: number;
-  dg_max: number | null;
-  dg_median: number | null;
-  coop: number | null;
-  rmse: number | null;
-  idotp: number | null;
-  backex: number | null;
-  n_exch: number | null;
-  nmr: boolean;
+  methods: string[];
+  n_conditions: number;
   pdb: string | null;
-  page: boolean;
+  pride: string | null;
+  dg_max: number | null;
 }
 
-export interface Index {
+export interface EntryList {
   schema_version: string;
-  source: { zenodo: string; file: string; sha256: string };
-  rows: IndexRow[];
+  entries: EntryListRow[];
 }

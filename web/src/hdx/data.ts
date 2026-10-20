@@ -62,16 +62,16 @@ export function fmtTime(s: number): string {
 }
 
 export const METRIC_LABELS: Record<string, { label: string; hint: string }> = {
-  dg_max: { label: "ΔG max", hint: "Most stable site in the sorted mHDX landscape" },
-  dg_median: { label: "ΔG median", hint: "Median of the sorted mHDX landscape" },
-  cooperativity: { label: "Cooperativity", hint: "Global cooperativity score from the mHDX fit (Ferrari et al.)" },
-  cooperativity_normalized: { label: "Cooperativity (norm.)", hint: "Cooperativity normalized against designs of similar size" },
-  fit_rmse: { label: "Fit RMSE", hint: "Isotope-distribution fit error, all timepoints" },
-  fit_rmse_max: { label: "Fit RMSE max", hint: "Worst single-timepoint fit error" },
-  idotp_max: { label: "idotp", hint: "Isotope-pattern match to the expected peptide (1 = perfect)" },
-  backexchange_final: { label: "Back-exchange", hint: "Fraction of label lost at the final timepoint" },
-  n_exchangeable: { label: "Exchangeable sites", hint: "Backbone amides that can exchange" },
-  n_protected: { label: "Protected sites", hint: "Sites with measurable protection" },
-  landscape_rmsd_top_k: { label: "Landscape RMSD", hint: "mHDX vs HDX-NMR, top-k sorted ΔG (computed here)" },
-  dg_max_difference: { label: "ΔG max difference", hint: "mHDX minus HDX-NMR most stable site (computed here)" },
+  dg_max: { label: "ΔG max", hint: "Highest site ΔG in the mHDX-MS fit (Dataset_3 dg_max)" },
+  dg_median: { label: "ΔG median", hint: "Median site ΔG in the mHDX-MS fit (Dataset_3 dg_median)" },
+  cooperativity: { label: "Cooperativity", hint: "Dataset_3 cooperativity_model_global; defined in Ferrari et al." },
+  cooperativity_normalized: { label: "Cooperativity (norm.)", hint: "Dataset_3 normalized_cooperativity_model_global; normalization defined in Ferrari et al." },
+  fit_rmse: { label: "Fit RMSE", hint: "RMSE of the rate fit to the isotope distributions (rate_fitting_rmse_total)" },
+  fit_rmse_max: { label: "Fit RMSE max", hint: "Dataset_3 rate_fitting_rmse_max" },
+  idotp_max: { label: "idotp", hint: "Dot product of observed and theoretical isotope patterns (max_idotp; 1 = identical)" },
+  backexchange_final: { label: "Back-exchange", hint: "Back-exchange estimate at the final labeling time (backexchange_final_tp)" },
+  n_exchangeable: { label: "Exchangeable sites", hint: "Number of exchangeable backbone amides (n_exch_res)" },
+  n_protected: { label: "Protected sites", hint: "Dataset_3 n_protected_res; defined in Ferrari et al." },
+  landscape_rmsd_top_k: { label: "Sorted-ΔG RMSD", hint: "RMSD between rank-matched mHDX-MS and HDX-NMR ΔG, top k sites (computed here)" },
+  dg_max_difference: { label: "ΔG max difference", hint: "Highest mHDX-MS ΔG minus highest HDX-NMR ΔG (computed here)" },
 };

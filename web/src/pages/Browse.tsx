@@ -13,7 +13,7 @@ export default function Browse() {
       <header className="flex flex-col gap-1">
         <h1 className="text-[26px] font-semibold tracking-tight text-ink">HDX-MS entries</h1>
         <p className="text-[14px] text-ink-secondary">
-          {data ? `${entries.length} ${entries.length === 1 ? "entry" : "entries"}` : "Loading…"}. Raw spectra stay in PRIDE; each entry links back to them.
+          {data ? `${entries.length} ${entries.length === 1 ? "entry" : "entries"}` : "Loading…"}. Raw mass spectra are archived in PRIDE; each entry cites its accession.
         </p>
       </header>
 

@@ -190,7 +190,7 @@ export default function Explorer({ entry }: { entry: Entry }) {
   }, [threshold, dgMetric, entry]);
 
   const legend = mode === "sse" ? null : mode === "deut" ? (
-    { gradient: rampGradient(DEUTERATION_RAMP), lo: "0 (protected)", hi: "1 (exchanged)" }
+    { gradient: rampGradient(DEUTERATION_RAMP), lo: "0 (no deuterium)", hi: "1 (fully deuterated)" }
   ) : current ? (
     { gradient: rampGradient(STABILITY_RAMP), lo: fmt(current.domain[0], 1), hi: `${fmt(current.domain[1], 1)} ${current.unit ?? ""}` }
   ) : null;
@@ -237,12 +237,12 @@ export default function Explorer({ entry }: { entry: Entry }) {
                   </option>
                 ))}
               </select>
-              {mode === "deut" && kobsKey && kobsKey !== `kobs:${cid}` && <Hint>Rates from {kobsKey.split(":")[1]}: the mean has no rates of its own.</Hint>}
+              {mode === "deut" && kobsKey && kobsKey !== `kobs:${cid}` && <Hint>Exchange rates from {kobsKey.split(":")[1]}; the mean condition reports ΔG only.</Hint>}
             </Field>
           )}
 
           {mode === "dg" && (
-            <Field label={threshold == null ? "Highlight the most stable sites" : `Show sites with ΔG ≥ ${threshold.toFixed(1)} kcal/mol`}>
+            <Field label={threshold == null ? "ΔG threshold (off)" : `Residues with ΔG ≥ ${threshold.toFixed(1)} kcal/mol`}>
               <div className="flex items-center gap-2">
                 <input type="checkbox" checked={threshold != null} onChange={(e) => setThreshold(e.target.checked ? (em.dgDomain[0] + em.dgDomain[1]) / 2 : null)} />
                 <input
@@ -252,7 +252,7 @@ export default function Explorer({ entry }: { entry: Entry }) {
               </div>
               {above && (
                 <Hint>
-                  {above.n} of {above.of} measured residues stay colored. In the mHDX-MS landscape, {above.mn} of {above.mof} sites are this stable, with no residue assignment.
+                  {above.n} of {above.of} residues with HDX-NMR values pass. In the mHDX-MS fit, {above.mn} of {above.mof} sites pass; these sites are not assigned to residues.
                 </Hint>
               )}
             </Field>
@@ -261,7 +261,7 @@ export default function Explorer({ entry }: { entry: Entry }) {
           {mode === "deut" && (
             <Field label={`Labeling time t = ${fmtTime(timeS)}`}>
               <input type="range" min={T_MIN} max={T_MAX} step={0.05} value={logT} onChange={(e) => setLogT(Number(e.target.value))} className="w-full accent-[#663be4]" />
-              <Hint>Predicted from each residue&apos;s NMR exchange rate: D = 1 − e^(−k·t). The same cursor is drawn on the uptake plot.</Hint>
+              <Hint>Per residue, D = 1 − e^(−k·t), with k the HDX-NMR exchange rate. Assumes single-exponential exchange and no back-exchange. The same t is marked on the mHDX-MS uptake plot, whose labeling conditions may differ.</Hint>
             </Field>
           )}
 
@@ -282,12 +282,12 @@ export default function Explorer({ entry }: { entry: Entry }) {
               <div className="h-2.5 rounded" style={{ background: legend.gradient }} />
               <div className="flex justify-between font-mono text-[10px] text-ink-muted"><span>{legend.lo}</span><span>{legend.hi}</span></div>
               <div className="flex flex-wrap gap-3 text-[10.5px] text-ink-muted">
-                <Swatch color={MISSING_COLOR} label="no value (not measured)" />
-                {mode === "dg" && threshold != null && <Swatch color={FADED_COLOR} label="measured, below threshold" />}
+                <Swatch color={MISSING_COLOR} label="no value reported" />
+                {mode === "dg" && threshold != null && <Swatch color={FADED_COLOR} label="value below threshold" />}
               </div>
             </div>
           )}
-          <Hint>Hover or click residues in 3D, the lanes, or any residue plot: all of them follow.</Hint>
+          <Hint>Hovering or selecting a residue in the structure, the lanes, or a residue-axis plot highlights it in all three.</Hint>
         </aside>
       </div>
 

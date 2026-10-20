@@ -273,7 +273,7 @@ def build_entry(name: str, pdb: str, d3_rows: list[dict], d4_rows: list[dict]) -
         })
         conditions.append({
             "id": f"mhdx_{rid}", "label": f"mHDX-MS, {r['library']}, {r['pH']}", "method": "mHDX-MS",
-            "construct": "HM + design (cleaved)" if offset >= 0 else None, "replicate": None,
+            "construct": "Dataset_3 sequence (HM + design)" if offset >= 0 else None, "replicate": None,
             "pH": r["pH"], "temp_K": None, "buffer": None, "source_row": int(rid),
         })
 
@@ -282,9 +282,9 @@ def build_entry(name: str, pdb: str, d3_rows: list[dict], d4_rows: list[dict]) -
     lock_uri = lambda k: LOCK[k]["url"].replace("?download=1", "")  # noqa: E731
     d3_uri, d3_sha = lock_uri("zenodo_dataset3"), LOCK["zenodo_dataset3"]["sha256"]
     artifacts = [
-        {"id": "a_raw", "level": "L0", "title": "Raw Waters .raw files (mHDX-MS, SYNAPT G2-Si)", "format": "Waters RAW",
+        {"id": "a_raw", "level": "L0", "title": "Raw mHDX-MS data (Waters SYNAPT G2-Si), archived in PRIDE", "format": "vendor raw",
          "uri": f"https://www.ebi.ac.uk/pride/archive/projects/{PRIDE}", "sha256": None, "license": "CC0-1.0", "held": False},
-        {"id": "a_nmr_raw", "level": "L0", "title": "HDX-NMR spectra (location not stated in the sources)", "format": "NMR spectra",
+        {"id": "a_nmr_raw", "level": "L0", "title": "HDX-NMR spectra (location not stated in the cited sources)", "format": "NMR spectra",
          "uri": None, "sha256": None, "license": "unknown", "held": False},
         # Dataset_3 is one file holding two levels; each artifact names the fields it covers.
         {"id": "a_d3_iso", "level": "L1", "title": "Isotope distributions per timepoint (Zenodo Dataset_3)", "format": "JSON",
@@ -297,28 +297,28 @@ def build_entry(name: str, pdb: str, d3_rows: list[dict], d4_rows: list[dict]) -
          "uri": lock_uri("zenodo_dataset4"), "sha256": LOCK["zenodo_dataset4"]["sha256"], "license": "CC-BY-4.0", "held": False},
         {"id": "a_pdb", "level": "L2", "title": f"PDB {pdb}: NMR structure, {struct['n_models']} models", "format": "mmCIF",
          "uri": lock_uri(f"pdb_{pdb.lower()}"), "sha256": LOCK[f"pdb_{pdb.lower()}"]["sha256"], "license": "CC0-1.0", "held": True},
-        {"id": "a_entry", "level": "L3", "title": "This entry record, with agreement metrics computed here", "format": "JSON",
+        {"id": "a_entry", "level": "L3", "title": "Entry record, with L3 metrics computed by this repository", "format": "JSON",
          "uri": f"entries/{opaque_id(name)}.json", "sha256": None, "license": "CC-BY-4.0", "held": True},
     ]
     commit = {r["repo"].rsplit("/", 1)[1]: r["commit"] for r in REPOS}
     runs = [
         {"id": "r_mhdx", "software": "mhdx_pipeline", "version": commit.get("mhdx_pipeline"),
-         "description": "Isotope-cluster extraction from LC-IMS-MS runs, one distribution per timepoint",
+         "description": "Extracts one intact-protein isotope distribution per labeling time from the raw data",
          "inputs": ["a_raw"], "outputs": ["a_d3_iso"], "parsed_from": "paper and repository README"},
         {"id": "r_rates", "software": "hdxrate_pipeline", "version": commit.get("hdxrate_pipeline"),
-         "description": "Bayesian fit of sorted exchange rates to the isotope distributions; ΔG from rate / intrinsic rate",
+         "description": "Fits sorted exchange rates to the isotope distributions; reports ΔG per site (Dataset_3 free_energy)",
          "inputs": ["a_d3_iso"], "outputs": ["a_d3_fit"], "parsed_from": "Dataset_3 field names and repository README"},
         {"id": "r_nmr", "software": "HDX-NMR analysis (Ferrari et al. 2026)", "version": None,
-         "description": "Per-amide exchange rates from NMR peak decay, converted to ΔG",
+         "description": "Per-amide exchange rates and ΔG from HDX-NMR; method described in Ferrari et al.",
          "inputs": ["a_nmr_raw"], "outputs": ["a_d4"], "parsed_from": "paper"},
         {"id": "r_build", "software": "hdx-data-repo pipeline/build_entries.py", "version": "0.0.1",
-         "description": "Joins the sources by protein name, maps residues to PDB auth numbering, computes L3 agreement",
+         "description": "Joins sources by protein name, maps residues to PDB author numbering, computes L3 metrics",
          "inputs": ["a_d3_fit", "a_d4", "a_pdb"], "outputs": ["a_entry"], "parsed_from": "this repository"},
     ]
     interpretations = [
-        {"id": "m_001", "title": "Energy landscape from mHDX-MS", "method": "mHDX-MS + hdxrate_pipeline",
+        {"id": "m_001", "title": "Sorted site ΔG (mHDX-MS)", "method": "mHDX-MS + hdxrate_pipeline",
          "resolution": "whole protein (unassigned)", "artifact": "a_d3_fit", "run": "r_rates", "conditions": mhdx_ids},
-        {"id": "m_002", "title": "Energy landscape from HDX-NMR", "method": "HDX-NMR",
+        {"id": "m_002", "title": "Per-residue ΔG (HDX-NMR)", "method": "HDX-NMR",
          "resolution": "residue", "artifact": "a_d4", "run": "r_nmr", "conditions": nmr_ids},
         {"id": "m_003", "title": f"Deposited NMR ensemble ({pdb})", "method": "Solution NMR",
          "resolution": "atomic model", "artifact": "a_pdb", "run": None, "conditions": []},

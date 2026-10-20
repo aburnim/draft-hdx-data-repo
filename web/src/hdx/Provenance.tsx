@@ -75,9 +75,9 @@ export default function Provenance({ entry }: { entry: Entry }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="max-w-3xl text-[13px] leading-relaxed text-ink-secondary">
-        Every value on this page traces back through these steps. Levels follow Dynamic PDB&apos;s scale of distance
-        from the instrument. Raw data stays in PRIDE and is referenced, never copied. Hollow boxes are referenced files;
-        solid boxes are files this site serves. Click any box for its URI, checksum and license.
+        Boxes are files; rounded boxes are processing steps. Columns are Dynamic PDB data levels, from raw instrument
+        data (L0) to evaluation (L3). Dashed borders mark files referenced by URI and not hosted here; solid borders mark
+        files hosted here. Selecting a box shows its URI, SHA-256, and license.
       </p>
       <div className="overflow-x-auto rounded-lg border border-line bg-white p-3">
         <svg viewBox={`0 0 ${width} ${height}`} style={{ minWidth: 980, width: "100%" }} role="img" aria-label="Provenance graph">
@@ -153,7 +153,7 @@ function ArtifactDetail({ a, entry }: { a: Artifact; entry: Entry }) {
     <dl>
       <h3 className="mb-2 text-[14px] font-semibold text-ink">{a.title}</h3>
       <Row k="id · level">{a.id} · {a.level}</Row>
-      <Row k="uri">{a.uri ? <a className="text-accent underline" href={a.uri} target="_blank" rel="noreferrer">{a.uri}</a> : "not stated by the source; declared so the gap is visible"}</Row>
+      <Row k="uri">{a.uri ? <a className="text-accent underline" href={a.uri} target="_blank" rel="noreferrer">{a.uri}</a> : "not stated in the cited sources"}</Row>
       <Row k="sha256">{a.sha256 ?? "–"}</Row>
       <Row k="stored here">{a.held ? "yes" : "no, referenced"}</Row>
       <Row k="license">{a.license}</Row>

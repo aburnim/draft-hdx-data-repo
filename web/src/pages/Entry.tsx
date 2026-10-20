@@ -106,8 +106,8 @@ function Overview({ entry }: { entry: EntryT }) {
           ["Origin", entry.protein.origin],
           ["Topology", entry.protein.topology ?? "–"],
           ["Sequence", <span className="font-mono text-[11px] tracking-wide">{seq}</span>],
-          ["Structure", `${entry.external_refs.pdb}, solution NMR ensemble (residue numbering = auth_seq_id)`],
-          ["Methods", "mHDX-MS (whole protein), HDX-NMR (per residue)"],
+          ["Structure", `${entry.external_refs.pdb}, NMR ensemble. Residue numbers are auth_seq_id.`],
+          ["Methods", "mHDX-MS (intact protein; sites not assigned to residues); HDX-NMR (per backbone amide)"],
           ["HDX-NMR conditions", nmr.map((c) => c.label).join("; ")],
           ["mHDX-MS", entry.mhdx.map((m) => `${m.library}, ${m.pH_label}, ${m.timepoints_s.length} timepoints`).join("; ")],
           ["Cite", entry.citation],
@@ -119,10 +119,10 @@ function Overview({ entry }: { entry: EntryT }) {
           {entry.metrics.map((m) => <MetricTile key={m.key} m={m} />)}
         </div>
         <div className="rounded-lg border border-line bg-surface-muted p-3 text-[12px] leading-relaxed text-ink-secondary">
-          <b className="text-ink">How to read this entry.</b> The measurement is fixed; the interpretations are peers.
-          mHDX-MS sees the whole protein at once, so it reports a ranked landscape of site stabilities but cannot place
-          them on residues. HDX-NMR places them, on a slightly different construct. A blank is a value nobody measured,
-          never a zero. Every number links back to its source on the Provenance tab.
+          <b className="text-ink">Reading this entry.</b> mHDX-MS measures the intact protein. Its fit reports ΔG
+          for each exchanging site, sorted by value; sites are not assigned to residues. HDX-NMR reports ΔG per backbone
+          amide, on constructs that differ from the mHDX-MS construct (see the Constructs lane). Empty cells have no
+          reported value; they are not zeros. The Provenance tab gives the source file of each value.
         </div>
       </div>
     </div>
@@ -137,8 +137,9 @@ function Interpretations({ entry }: { entry: EntryT }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="max-w-3xl text-[13px] leading-relaxed text-ink-secondary">
-        Each interpretation explains the same protein&apos;s exchange behavior. None is the reference: the deposited
-        structure is a model like the others, and disagreement between them is information.
+        This entry lists three interpretations for one protein: two ΔG sets derived from exchange data (mHDX-MS,
+        HDX-NMR) and the deposited NMR structure. None is designated as the reference. The structure provides the
+        coordinate frame for residue mapping; it is not treated as ground truth for the exchange data.
       </p>
       <div className="grid gap-3 lg:grid-cols-3">
         {entry.interpretations.map((m) => {
@@ -163,12 +164,12 @@ function Interpretations({ entry }: { entry: EntryT }) {
       </div>
       {l3.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">L3 · Do they agree?</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">L3 · Agreement between ΔG sets</h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{l3.map((m) => <MetricTile key={m.key} m={m} />)}</div>
           <p className="max-w-3xl text-[11.5px] text-ink-muted">
-            Sketch metrics computed by this repository, not by the authors: the sorted mHDX-MS landscape against the
-            No-His HDX-NMR landscape (the closest construct), over the sites both measured. A placeholder for a
-            community-agreed comparison.
+            Computed by this repository; not reported by the authors. Compares sorted mHDX-MS ΔG with sorted No-His
+            HDX-NMR ΔG (the NMR construct closest to the mHDX-MS construct) over the k highest-ΔG sites, where k is the
+            smaller site count. Sites are matched by rank, not by residue. The metric is exploratory and unvalidated.
           </p>
         </section>
       )}
@@ -178,9 +179,9 @@ function Interpretations({ entry }: { entry: EntryT }) {
 
 function Downloads({ entry }: { entry: EntryT }) {
   const files = [
-    { href: `entries/${entry.id}.json`, label: "Entry record (JSON)", note: `schema ${entry.schema_version}, every value on this page` },
+    { href: `entries/${entry.id}.json`, label: "Entry record (JSON)", note: `schema ${entry.schema_version}; all values shown on this page` },
     { href: `entries/${entry.id}.residues.csv`, label: "Per-residue HDX-NMR values (CSV)", note: "condition, residue, ΔG, kobs, kint" },
-    { href: `structures/${entry.external_refs.pdb}.cif`, label: `Structure ${entry.external_refs.pdb} (mmCIF)`, note: "byte-identical copy of the RCSB file" },
+    { href: `structures/${entry.external_refs.pdb}.cif`, label: `Structure ${entry.external_refs.pdb} (mmCIF)`, note: "copy of the RCSB file; SHA-256 in the source lock" },
     { href: "sources.lock.json", label: "Source lock (JSON)", note: "URL, SHA-256 and license of every input, plus pinned code commits" },
     { href: "schema/hdx_entry.v0.json", label: "Entry schema (JSON Schema)", note: "rough draft 0.0.1" },
   ];
@@ -195,7 +196,7 @@ function Downloads({ entry }: { entry: EntryT }) {
         ))}
       </ul>
       <p className="text-[12px] text-ink-muted">
-        Raw spectra are not served here. Get them from PRIDE{" "}
+        Raw mass spectra are not hosted here. They are archived in PRIDE{" "}
         <a className="text-accent underline" href={`https://www.ebi.ac.uk/pride/archive/projects/${entry.external_refs.pride}`} target="_blank" rel="noreferrer">{entry.external_refs.pride}</a>.
         {" "}{entry.license}.
       </p>

@@ -97,8 +97,8 @@ export function LandscapePlot({ entry, links }: { entry: Entry; links: PlotLinks
     return traces;
   }, [entry]);
   const layout = useMemo<Partial<Plotly.Layout>>(() => ({
-    xaxis: { title: { text: "exchanging sites, most stable first" } },
-    yaxis: { title: { text: "ΔG unfolding (kcal/mol)" } },
+    xaxis: { title: { text: "site rank (highest ΔG first)" } },
+    yaxis: { title: { text: "ΔG (kcal/mol)" } },
     margin: { l: 52, r: 12, t: 8, b: 96 },
     legend: { orientation: "h", y: -0.3, x: 0, font: { size: 10.5 } },
     shapes: links.threshold == null ? [] : [{
@@ -107,7 +107,7 @@ export function LandscapePlot({ entry, links }: { entry: Entry; links: PlotLinks
     }],
   }), [links.threshold]);
   return (
-    <Card title="Energy landscape: mHDX-MS vs HDX-NMR" source="m_001 · m_002">
+    <Card title="Sorted ΔG: mHDX-MS and HDX-NMR" source="m_001 · m_002">
       <Plot data={data} layout={layout} height={340} />
     </Card>
   );
@@ -151,7 +151,7 @@ export function IsotopePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks
       });
       traces.push({
         type: "scatter", mode: "lines", x: xs, y: pred.map((v) => off + v / peak),
-        line: { color: active ? "#663be4" : "#3d414f", width: 1.2 }, showlegend: row === 0, name: "fit (hdxrate_pipeline)", legendgroup: "fit",
+        line: { color: active ? "#663be4" : "#3d414f", width: 1.2 }, showlegend: row === 0, name: "predicted (fit)", legendgroup: "fit",
         customdata: xs.map(() => time),
         hovertemplate: `${time === 0 ? "undeuterated" : fmtTime(time)}<br>+%{x} Da<extra></extra>`,
       });
@@ -171,7 +171,7 @@ export function IsotopePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks
     <Card
       title="Isotope distributions over time"
       source={`m_001 · a_d3_iso row ${m.source_row}`}
-      caption={<>Whole-protein mass spectra (filled) and the fitted model (line) at 9 of {m.timepoints_s.length} timepoints. Click a row to move the time cursor.</>}
+      caption={<>Measured intact-protein isotope distributions (filled) and the distributions predicted by the rate fit (line), at 9 of {m.timepoints_s.length} labeling times. Each row is scaled to its maximum. Selecting a row sets the time cursor.</>}
     >
       <Plot
         data={data}
@@ -208,14 +208,14 @@ export function UptakePlot({ m, links }: { m: MhdxMeasurement; links: PlotLinks 
       tickvals: [10, 100, 1e3, 1e4, 1e5], ticktext: ["10 s", "100 s", "17 min", "2.8 h", "1.2 d"],
     },
     margin: { l: 52, r: 12, t: 8, b: 84 },
-    yaxis: { title: { text: "deuterium uptake (Da)" } },
+    yaxis: { title: { text: "centroid mass shift (Da)" } },
     shapes: [{ type: "line", xref: "x", yref: "paper", x0: links.timeS, x1: links.timeS, y0: 0, y1: 1, line: { color: "#663be4", width: 1.5, dash: "dot" } }],
   }), [links.timeS]);
   return (
     <Card
-      title="Deuterium uptake"
+      title="Deuterium uptake, intact protein"
       source={`m_001 · a_d3_iso row ${m.source_row}`}
-      caption="Centroids computed here from the distributions above. The dotted line is the time cursor shared with the structure's deuteration coloring. Click to move it."
+      caption="Centroids computed by this repository from the measured and predicted distributions, without back-exchange correction. The dotted line marks the time used for the structure coloring; selecting a point moves it."
     >
       <Plot data={data} layout={layout} height={340} onClick={(e) => {
         const x = e.points[0]?.x;
@@ -250,9 +250,9 @@ export function ChicletPlot({ entry, em, links }: { entry: Entry; em: EntryMetri
   }), [links.hoverSeq, entry]);
   return (
     <Card
-      title="ΔG per residue, every condition (chiclet)"
+      title="ΔG per residue by HDX-NMR condition"
       source="m_002 · a_d4"
-      caption="Blank cells were not measured (prolines, the N-terminus, fast-exchanging or overlapped amides). They are absent, not zero."
+      caption="Blank cells have no reported value. Prolines lack a backbone amide hydrogen; Dataset_4 does not state the reason for other gaps."
     >
       <Plot data={data} layout={layout} height={220} {...seqHandlers(links)} />
     </Card>
@@ -282,13 +282,13 @@ export function ButterflyPlot({ entry, links }: { entry: Entry; links: PlotLinks
   const layout = useMemo<Partial<Plotly.Layout>>(() => ({
     barmode: "overlay",
     xaxis: residueAxis(entry),
-    yaxis: { title: { text: "ΔG (kcal/mol), No-His mirrored" }, tickformat: "~f" },
+    yaxis: { title: { text: "ΔG (kcal/mol); No-His plotted negative" }, tickformat: "~f" },
     shapes: hoverColumn(links.hoverSeq),
     margin: { l: 52, r: 12, t: 8, b: 84 },
   }), [links.hoverSeq, entry]);
   if (!top || !bottom) return null;
   return (
-    <Card title="Butterfly: 6xHis vs No-His construct" source="m_002 · a_d4 rows 37, 5">
+    <Card title="ΔG per residue: 6xHis (mean) and No-His" source="m_002 · a_d4 rows 37, 5">
       <Plot data={data} layout={layout} height={280} {...seqHandlers(links)} />
     </Card>
   );
@@ -327,9 +327,9 @@ export function TagEffectPlot({ entry, links }: { entry: Entry; links: PlotLinks
   const n = rows.filter((r) => r.beyond).length;
   return (
     <Card
-      title="Does the His-tag change stability? (Woods-style)"
+      title="ΔΔG per residue, 6xHis minus No-His"
       source="m_002 · computed here"
-      caption={<>Bars are the per-residue difference; whiskers are twice the half-range of the two 6xHis replicates. {n} of {rows.length} residues differ by more than that (blue: more stable with the tag; red: less stable). Two replicates is a thin noise estimate: treat this as a screen, not a test.</>}
+      caption={<>Bars: ΔΔG = ΔG(6xHis mean) − ΔG(No-His). Whiskers: ±|r1 − r2| from the two 6xHis replicates. {n} of {rows.length} residues have |ΔΔG| outside this range (blue: higher ΔG in 6xHis; red: lower). No-His has one replicate, so its variability is not included. This is not a statistical test.</>}
     >
       <Plot data={data} layout={layout} height={260} {...seqHandlers(links)} />
     </Card>

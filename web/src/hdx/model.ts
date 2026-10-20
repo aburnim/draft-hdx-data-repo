@@ -8,9 +8,9 @@ import type { Condition, Entry } from "./types";
 export type ColorMode = "dg" | "logpf" | "deut" | "sse";
 
 export const MODE_LABELS: Record<ColorMode, string> = {
-  dg: "ΔG unfolding (HDX-NMR)",
+  dg: "ΔG (HDX-NMR)",
   logpf: "log₁₀ protection factor",
-  deut: "Deuteration at time t",
+  deut: "Predicted deuteration at t",
   sse: "Secondary structure",
 };
 

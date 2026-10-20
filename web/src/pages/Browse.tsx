@@ -10,12 +10,7 @@ export default function Browse() {
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-[26px] font-semibold tracking-tight text-ink">HDX-MS entries</h1>
-        <p className="text-[14px] text-ink-secondary">
-          {data ? `${entries.length} ${entries.length === 1 ? "entry" : "entries"}` : "Loading…"}. Raw mass spectra are archived in PRIDE; each entry cites its accession.
-        </p>
-      </header>
+      <h1 className="text-[26px] font-semibold tracking-tight text-ink">HDX-MS entries</h1>
 
       <div className="overflow-hidden rounded-lg border border-line bg-white">
         <div className="overflow-x-auto">

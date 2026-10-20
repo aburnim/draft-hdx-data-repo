@@ -32,16 +32,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-surface-muted/60">
       <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <a href="#/" className="flex items-baseline gap-2">
             <span className="text-[16px] font-semibold tracking-tight text-ink">Prism</span>
             <span className="text-[13px] text-ink-muted">HDX entries</span>
             <span className="rounded bg-accent-soft px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase text-accent">prototype</span>
           </a>
-          <nav className="flex gap-4 text-[12.5px] text-ink-secondary">
-            <a href="#/" className="hover:text-accent">Browse</a>
-            <a href="https://dynamicpdb.com" target="_blank" rel="noreferrer" className="hover:text-accent">Dynamic PDB</a>
-          </nav>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">

@@ -39,9 +39,6 @@ export default function Browse() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-ink">{e.name}</div>
-                    <div className="text-[11.5px] text-ink-muted">
-                      {e.origin}{e.topology ? ` · ${e.topology}` : ""} · {e.length} residues
-                    </div>
                   </td>
                   <td className="px-4 py-3 text-ink-secondary">{e.methods.join(", ")}</td>
                   <td className="px-4 py-3 text-right font-mono tabular-nums">{fmt(e.dg_max)}</td>

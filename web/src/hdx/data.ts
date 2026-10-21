@@ -61,6 +61,17 @@ export function fmtTime(s: number): string {
   return `${(s / 86400).toFixed(1)} d`;
 }
 
+/** label and hint for a metric key, including the generated peptide-level keys */
+export function metricLabel(key: string): { label: string; hint: string } {
+  const known = METRIC_LABELS[key];
+  if (known) return known;
+  let m = key.match(/^repro_median_sd_(.+)$/);
+  if (m) return { label: `Replicate SD, ${m[1]} (median)`, hint: "Median standard deviation over replicates, per peptide and time (L1)" };
+  m = key.match(/^(\w+)_vs_(\w+):(.+)$/);
+  if (m) return { label: `${m[1]} vs ${m[2]}: ${m[3]}`, hint: "Peptides in this class under the hybrid significance test (L2, computed here)" };
+  return { label: key, hint: "" };
+}
+
 export const METRIC_LABELS: Record<string, { label: string; hint: string }> = {
   dg_max: { label: "ΔG max", hint: "Highest site ΔG in the mHDX-MS fit (Dataset_3 dg_max)" },
   dg_median: { label: "ΔG median", hint: "Median site ΔG in the mHDX-MS fit (Dataset_3 dg_median)" },

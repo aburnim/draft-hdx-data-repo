@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "entries": [
     {
       "id": "hdx_b34v7hqq",
@@ -133,6 +133,21 @@
       "pdb": "8SHM",
       "structure_entry": "hdx_0zpo5my9",
       "raw": null
+    },
+    {
+      "id": "hdx_j0nfaf94",
+      "name": "ecDHFR",
+      "method": "HDX-MS (peptide)",
+      "samples": 3,
+      "constructs": [
+        "APO",
+        "MTX",
+        "TMP"
+      ],
+      "dg_max": null,
+      "pdb": "5DFR, 1RG7, 6XG5",
+      "structure_entry": "hdx_2rh9oqpv",
+      "raw": "PRIDE PXD057539"
     }
   ]
 }

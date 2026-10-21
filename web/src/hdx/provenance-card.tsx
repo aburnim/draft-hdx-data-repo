@@ -1,7 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
-import { METRIC_LABELS } from "./data";
-import type { Artifact, Derivation, View, Run } from "./types";
+import { metricLabel } from "./data";
+import type { AnyView as View, Artifact, Derivation, Run } from "./types";
 
 // Per-value provenance. Every displayed value or plot names a derivation (pipeline
 // build_derivations); SourceLine shows its origin in one line, and clicking it opens a
@@ -46,7 +46,7 @@ function useProvenance(): Ctx {
 
 /** display name: metric labels for metrics, the stored label otherwise */
 export function derivationLabel(d: Derivation): string {
-  return d.id.startsWith("metric:") ? (METRIC_LABELS[d.label]?.label ?? d.label) : d.label;
+  return d.id.startsWith("metric:") ? metricLabel(d.label).label : d.label;
 }
 
 /** "Dataset_3 · dg_max · row 214" for the first input, "+1 more" for the rest;

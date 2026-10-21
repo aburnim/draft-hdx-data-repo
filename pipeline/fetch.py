@@ -79,10 +79,51 @@ SOURCES = [
         "level": "L0",
         "title": "PRIDE file listing for PXD061702 (names, sizes, FTP locations)",
     },
+    # --- peptide-level HDX-MS: ecDHFR, Glasgow lab (Lu et al. 2026, Nat. Chem. Biol.) ---
+    {
+        "id": "pride_pxd057539",
+        "file": "PXD057539.json",
+        "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD057539",
+        "license": "CC0-1.0",
+        "level": "L0",
+        "title": "PRIDE project record for the PIGEON-FEATHER datasets (protocols, software, thresholds)",
+    },
+    {
+        "id": "pride_pxd057539_files",
+        "file": "PXD057539_files.json",
+        "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD057539/files/all",
+        "license": "CC0-1.0",
+        "level": "L0",
+        "title": "PRIDE file listing for PXD057539",
+    },
+    # The journal site blocks scripted downloads, so this file is placed by hand and
+    # checked against its pinned hash (see README, "How to use it").
+    {
+        "id": "hxms_supplement",
+        "file": "btag113_supplementary_data.zip",
+        "url": "https://academic.oup.com/bioinformatics/article/42/4/btag113/8512511",
+        "manual": True,
+        "expected_sha256": "77b3d872a37e0af7a3b0de8646d98c0bfab76e3eaee6563f1bf504e611e53fd4",
+        "license": "unverified (preprint version CC-BY-4.0)",
+        "level": "L1",
+        "title": "Supplementary data of Weber et al., HXMS format (Bioinformatics 2026): ecDHFR APO/MTX/TMP .hxms files",
+    },
+    *[
+        {
+            "id": f"pdb_{pdb.lower()}",
+            "file": f"{pdb}.cif",
+            "url": f"https://files.rcsb.org/download/{pdb}.cif",
+            "license": "CC0-1.0",
+            "level": "L2",
+            "title": f"PDB {pdb}, X-ray structure of E. coli DHFR, {state}",
+        }
+        for pdb, state in [("5DFR", "unliganded"), ("1RG7", "methotrexate complex"), ("6XG5", "trimethoprim complex")]
+    ],
 ]
 
 # Code is pinned by commit, not downloaded: the lock records what was current when fetched.
-REPOS = ["Rocklin-Lab/mhdx_pipeline", "Rocklin-Lab/hdxrate_pipeline", "Rocklin-Lab/mhdx_analysis"]
+REPOS = ["Rocklin-Lab/mhdx_pipeline", "Rocklin-Lab/hdxrate_pipeline", "Rocklin-Lab/mhdx_analysis",
+         "glasgowlab/PIGEON-FEATHER"]
 
 
 def sha256(path: Path) -> str:
@@ -95,6 +136,17 @@ def sha256(path: Path) -> str:
 
 def download(src: dict) -> dict:
     path = RAW / src["file"]
+    if src.get("manual"):
+        # placed by hand: take it from ~/Downloads if it is not in data/raw yet
+        candidate = Path.home() / "Downloads" / src["file"]
+        if not path.exists() and candidate.exists():
+            path.write_bytes(candidate.read_bytes())
+        if not path.exists():
+            raise SystemExit(f"{src['file']}: download it from {src['url']} and put it in data/raw/ or ~/Downloads")
+        digest = sha256(path)
+        if digest != src["expected_sha256"]:
+            raise SystemExit(f"{src['file']}: SHA-256 {digest} does not match the pinned {src['expected_sha256']}")
+        return {k: v for k, v in src.items() if k != "expected_sha256"} | {"sha256": digest, "bytes": path.stat().st_size}
     if not path.exists():
         print(f"downloading {src['file']}", file=sys.stderr)
         tmp = path.with_suffix(path.suffix + ".part")
@@ -120,7 +172,8 @@ def main() -> None:
     with ThreadPoolExecutor(max_workers=2) as pool:
         files = list(pool.map(download, SOURCES))
     # Keep pinned commits once recorded, so a re-run reproduces the same lock.
-    repos = previous.get("repos") or [head_commit(r) for r in REPOS]
+    pinned = {r["repo"]: r for r in previous.get("repos", [])}
+    repos = [pinned.get(f"https://github.com/{r}") or head_commit(r) for r in REPOS]
     lock = {
         "retrieved": previous.get("retrieved") or dt.date.today().isoformat(),
         "files": files,

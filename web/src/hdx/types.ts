@@ -116,6 +116,7 @@ export interface ViewMember {
 export interface View {
   schema_version: string;
   id: string;
+  kind?: "intact";
   name: string;
   title: string;
   grouping: string;
@@ -214,6 +215,10 @@ export interface RecordModel {
 export interface Sample {
   id: string;
   polymer_entity: string;
+  ligand?: string | null;
+  replicates?: number[];
+  d2o_saturation?: number;
+  pH_kind?: string;
   measurement?: number | string | null;
   mean_of_rows?: string[];
   conditions_differ?: boolean;
@@ -258,3 +263,88 @@ export interface EntryRecord {
   extensions: string[];
   citation: string;
 }
+
+// --- peptide-level views (views/view_ecdhfr.json, kind "peptide") ----------------------
+
+export type DiffClass = "more rigid" | "more flexible" | "mixed" | "no observable difference" | "not tested";
+
+export interface Peptide {
+  id: string;
+  start: number;
+  end: number;
+  seq: string;
+  n_ex: number;
+  conf: number;
+  rt_min: number;
+  charges: number[];
+  states: string[];
+}
+
+/** [time_bin, replicate, time_s, uptake_da_uncorrected, uptake_corrected] */
+export type UptakeRow = [string, number, number | null, number, number | null];
+
+export interface Comparison {
+  id: string;
+  a: string;
+  b: string;
+  replicates: number[];
+  n: number;
+  s_pooled_da: number | null;
+  df: number;
+  limit_da: number | null;
+  alpha: number;
+  /** per peptide: [time_bin, dD (b - a, Da), p, significant] */
+  results: Record<string, [string, number, number | null, boolean][]>;
+  classes: Record<string, DiffClass>;
+  counts: Record<DiffClass, number>;
+  /** keyed by construct position */
+  residue: Record<string, { class: DiffClass; value: number | null; n_peptides: number }>;
+}
+
+export interface PeptideStructure {
+  pdb: string;
+  entry: string;
+  state: string;
+  title: string;
+  method: string;
+  resolution: number | null;
+  ligands: string[];
+  chain: import("../vendor/hetstar/sequence").ChainJSON;
+  /** construct position -> label_seq_id / auth_seq_id */
+  label_of: Record<string, number>;
+  auth_of: Record<string, number>;
+  mismatches: { construct_pos: number; label_seq_id: number; construct: string; structure: string }[];
+  notes: string[];
+}
+
+export interface PeptideView {
+  schema_version: string;
+  id: string;
+  kind: "peptide";
+  name: string;
+  title: string;
+  grouping: string;
+  members: ViewMember[];
+  protein: { name: string; origin: string; topology: string | null; uniprot: string | null };
+  construct: { sequence: string; note: string };
+  labeling_conditions: { temperature_K: number; pH_read: number; d2o_saturation: number };
+  states: { id: string; label: string; ligand: string | null; replicates: number[]; n_peptides: number; pdb: string }[];
+  structures: PeptideStructure[];
+  time_bins: { id: string; label: string; t_s: number | null; n_times: number }[];
+  peptides: Peptide[];
+  uptake: Record<string, Record<string, UptakeRow[]>>;
+  fd: Record<string, Record<string, number>>;
+  reproducibility: Record<string, { n_points: number; median_sd_da: number; p95_sd_da: number; pooled_sd_da: number; replicates: number[] }>;
+  comparisons: Comparison[];
+  parameters: Record<string, Record<string, unknown>>;
+  identification_protocol: string | null;
+  external_refs: Record<string, string>;
+  artifacts: Artifact[];
+  runs: Run[];
+  metrics: Metric[];
+  derivations: Derivation[];
+  license: string;
+  citation: string;
+}
+
+export type AnyView = View | PeptideView;

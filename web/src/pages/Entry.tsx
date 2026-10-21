@@ -2,11 +2,12 @@ import "molstar/lib/mol-plugin-ui/skin/light.scss";
 
 import type { ReactNode } from "react";
 
-import { fmt, METRIC_LABELS, useJSON } from "../hdx/data";
+import { fmt, metricLabel, useJSON } from "../hdx/data";
 import Explorer from "../hdx/Explorer";
+import PeptideExplorer from "../hdx/PeptideExplorer";
 import Provenance from "../hdx/Provenance";
 import { derivationLabel, ProvenanceProvider, RAW_STYLE, SourceLine, TIER_STYLE } from "../hdx/provenance-card";
-import type { Derivation, EntryRecord, Metric, View } from "../hdx/types";
+import type { AnyView as View, Derivation, EntryRecord, Metric } from "../hdx/types";
 
 // One entry (an HDX measurement or a reference structure). Overview, Models, Provenance and
 // Downloads describe this entry's record; Explore is the cross-entry view it belongs to.
@@ -28,7 +29,6 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
   if (viewError) return <p className="text-danger">Could not load the cross-entry view: {viewError}</p>;
   if (!rec || !view) return <p className="text-ink-muted">Loading entry…</p>;
   const active = TABS.some((t) => t.id === tab) ? tab : "explore";
-  const refs = { ...view.external_refs, ...rec.external_refs };
 
   return (
     <div className="flex flex-col gap-4">
@@ -43,7 +43,7 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
         </div>
         <p className="text-[14px] text-ink-secondary">{rec.title}</p>
         <div className="flex flex-wrap gap-1.5">
-          {rec.kind === "structure" && refs.pdb && <Badge k="PDB" v={refs.pdb} href={`https://www.rcsb.org/structure/${refs.pdb}`} />}
+          {rec.kind === "structure" && rec.external_refs.pdb && <Badge k="PDB" v={rec.external_refs.pdb} href={`https://www.rcsb.org/structure/${rec.external_refs.pdb}`} />}
           {rec.external_refs.pride && <Badge k="PRIDE" v={rec.external_refs.pride} href={`https://www.ebi.ac.uk/pride/archive/projects/${rec.external_refs.pride}`} />}
           {rec.external_refs.zenodo && <Badge k="Zenodo" v={rec.external_refs.zenodo.split(".").pop()!} href={`https://doi.org/${rec.external_refs.zenodo}`} />}
           {rec.external_refs.doi && <Badge k="DOI" v={rec.external_refs.doi} href={`https://doi.org/${rec.external_refs.doi}`} />}
@@ -58,7 +58,7 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
               href={`#/entry/${m.id}/${active}`}
               className={`rounded border px-2 py-0.5 ${m.id === rec.id ? "border-accent bg-accent-soft text-accent" : "border-line-strong text-ink-secondary hover:bg-surface-muted"}`}
             >
-              {m.kind === "structure" ? `Structure ${view.external_refs.pdb}` : m.method} <span className="font-mono text-[10.5px] opacity-70">{m.id}</span>
+              {m.kind === "structure" ? `Structure ${m.title.split(":")[0]}` : m.method} <span className="font-mono text-[10.5px] opacity-70">{m.id}</span>
             </a>
           ))}
         </div>
@@ -79,7 +79,7 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
             <p className="text-[12px] text-ink-muted">
               Cross-entry view <span className="font-mono">{view.id}</span>: {view.grouping}
             </p>
-            <Explorer entry={view} />
+            {view.kind === "peptide" ? <PeptideExplorer view={view} /> : <Explorer entry={view} />}
           </>
         )}
         {active === "overview" && <Overview rec={rec} view={view} />}
@@ -119,12 +119,13 @@ function H2({ children }: { children: ReactNode }) {
 }
 
 function MetricTile({ m }: { m: Metric }) {
-  const meta = METRIC_LABELS[m.key];
+  const meta = metricLabel(m.key);
+  const digits = m.unit === "peptides" || Number.isInteger(m.value) && Math.abs(m.value) >= 10 ? 0 : 2;
   return (
-    <div className="rounded-lg border border-line bg-white px-3 py-2" title={meta?.hint}>
-      <div className="text-[11px] text-ink-muted">{meta?.label ?? m.key}</div>
+    <div className="rounded-lg border border-line bg-white px-3 py-2" title={meta.hint}>
+      <div className="text-[11px] text-ink-muted">{meta.label}</div>
       <div className="text-[18px] font-semibold tabular-nums text-ink">
-        {fmt(m.value, Math.abs(m.value) >= 10 ? 0 : 2)} <span className="text-[11px] font-normal text-ink-muted">{m.unit ?? ""}</span>
+        {fmt(m.value, digits)} <span className="text-[11px] font-normal text-ink-muted">{m.unit ?? ""}</span>
       </div>
       <div className="mt-0.5">
         <SourceLine id={`metric:${m.key}`} compact />
@@ -153,7 +154,7 @@ function Table({ head, rows, minWidth = 560 }: { head: string[]; rows: ReactNode
 }
 
 function Overview({ rec, view }: { rec: EntryRecord; view: View }) {
-  const structure = view.members.find((m) => m.kind === "structure");
+  const structures = view.members.filter((m) => m.kind === "structure");
   const frame = rec.models.find((m) => m.residue_frame)?.residue_frame;
   const metrics = view.metrics.filter((m) => m.entry === rec.id);
   const samples = rec.hdx?.samples ?? [];
@@ -164,7 +165,9 @@ function Overview({ rec, view }: { rec: EntryRecord; view: View }) {
         <Facts rows={[
           ["Method", <>{rec.method}{rec.method_source ? <span className="text-ink-muted"> (from {rec.method_source})</span> : null}</>],
           ["Protein", `${view.name} · ${view.protein.origin}${view.protein.topology ? ` · ${view.protein.topology}` : ""}`],
-          ["Reference structure", structure ? <a className="text-accent underline" href={`#/entry/${structure.id}`}>{view.external_refs.pdb} ({structure.id})</a> : "–"],
+          [structures.length > 1 ? "Reference structures" : "Reference structure", structures.length
+            ? <span className="flex flex-wrap gap-x-3">{structures.map((m) => <a key={m.id} className="text-accent underline" href={`#/entry/${m.id}`}>{m.title.split(":")[0]} ({m.id})</a>)}</span>
+            : "–"],
           ...(frame ? [["Residue numbering", `label_* numbering of ${frame.model}; ${frame.mapping}`] as [string, ReactNode]] : []),
           ["Revision", `${rec.revision.revision_number}, ${rec.revision.state}. ${rec.revision.change_summary ?? ""}`],
           ["Cite", rec.citation],
@@ -204,17 +207,17 @@ function Overview({ rec, view }: { rec: EntryRecord; view: View }) {
         <section className="flex flex-col gap-2">
           <H2>Samples</H2>
           <Table
-            head={["Sample", "Construct", "Measurement", "pH", "Temperature", "Buffer", "Labeling times", "Source"]}
+            head={["Sample", "Construct", samples.some((s) => s.ligand !== undefined) ? "Ligand · replicates" : "Measurement", "pH", "Temperature", "Buffer", "Labeling times", "Source"]}
             rows={samples.map((s) => [
               <span className="font-mono">{s.id}</span>,
               pe.get(s.polymer_entity)?.construct ?? s.polymer_entity,
-              s.measurement ?? "–",
-              s.pH ?? (s.pH_labels ? s.pH_labels.join(" + ") + (s.merged_pH_series ? " (merged)" : "") : s.conditions_differ ? "mixed" : "not reported"),
+              s.ligand !== undefined ? `${s.ligand ?? "none"} · ${(s.replicates ?? []).join(", ")}` : (s.measurement ?? "–"),
+              s.pH != null ? `${s.pH.toFixed(1)}${s.pH_kind === "pH(read)" ? " (read)" : ""}` : (s.pH_labels ? s.pH_labels.join(" + ") + (s.merged_pH_series ? " (merged)" : "") : s.conditions_differ ? "mixed" : "not reported"),
               s.temperature_kelvin != null ? `${s.temperature_kelvin} K` : s.conditions_differ ? "mixed" : "not reported",
               s.buffer ?? (s.conditions_differ ? "mixed" : "not reported"),
               s.labeling_times_s ? `${s.labeling_times_s.length}` : "–",
               <span className="font-mono text-[11px]">
-                {s.source.artifact} · row {s.source.rows.join(", ")}
+                {s.source.artifact}{s.source.rows.length ? ` · row ${s.source.rows.join(", ")}` : ""}
                 {s.mean_of_rows ? <span className="block font-sans text-ink-muted">mean of rows {s.mean_of_rows.join(", ")}{s.conditions_differ ? "; conditions differ" : ""}</span> : null}
               </span>,
             ])}
@@ -228,6 +231,16 @@ function Overview({ rec, view }: { rec: EntryRecord; view: View }) {
   );
 }
 
+/** the run chain as software names, consecutive repeats and this repository's steps collapsed */
+function producedBy(d: Derivation, runs: Map<string, { software: string }>): string {
+  const names = d.runs.map((r) => {
+    const sw = runs.get(r)?.software ?? r;
+    return sw.startsWith("hdx-data-repo") ? "this repository" : sw;
+  });
+  if (d.tier === "computed") names.push("this repository");
+  return names.filter((n, i) => n !== names[i - 1]).join(" → ") || "deposited";
+}
+
 /** Every displayed value of this entry, and the cross-entry values it contributes to. */
 function SourcesTable({ view, rec }: { view: View; rec: EntryRecord }) {
   const runs = new Map(view.runs.map((r) => [r.id, r]));
@@ -236,10 +249,10 @@ function SourcesTable({ view, rec }: { view: View; rec: EntryRecord }) {
   const row = (d: Derivation): ReactNode[] => [
     <>
       {derivationLabel(d)}
-      {d.value != null && <span className="ml-1.5 font-mono text-ink-secondary">{fmt(d.value, Math.abs(d.value) >= 10 ? 0 : 2)}{d.unit ? ` ${d.unit}` : ""}</span>}
+      {d.value != null && <span className="ml-1.5 font-mono text-ink-secondary">{fmt(d.value, d.unit === "peptides" || Math.abs(d.value) >= 10 ? 0 : 2)}{d.unit ? ` ${d.unit}` : ""}</span>}
     </>,
     <div className="max-w-[320px]"><SourceLine id={d.id} /></div>,
-    <span className="text-ink-secondary">{[...d.runs.map((r) => runs.get(r)?.software ?? r), ...(d.tier === "computed" ? ["this repository"] : [])].join(" → ") || "deposited"}</span>,
+    <span className="text-ink-secondary">{producedBy(d, runs)}</span>,
     <span style={{ color: RAW_STYLE[d.raw].color }}>{RAW_STYLE[d.raw].label.replace("from raw: ", "")}</span>,
   ];
   const head = ["Value or plot", "Source and tier", "Produced by", "From raw data"];
@@ -300,7 +313,7 @@ function Models({ rec, view }: { rec: EntryRecord; view: View }) {
       </div>
       {rec.kind === "hdx" && l3.length > 0 && (
         <section className="flex flex-col gap-2">
-          <H2>L3 · Agreement between linked entries</H2>
+          <H2>Cross-method comparison with the linked entry (exploratory)</H2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{l3.map((m) => <MetricTile key={m.key} m={m} />)}</div>
           <p className="max-w-3xl text-[11.5px] text-ink-muted">
             Computed by this repository; not reported by the authors. Compares sorted mHDX-MS ΔG with sorted HDX-NMR ΔG of
@@ -349,10 +362,10 @@ function Downloads({ rec, view }: { rec: EntryRecord; view: View }) {
     { href: `entries/${rec.id}.json`, label: "Entry record (JSON)", note: `schema ${rec.schema_version}; Dynamic PDB v0.2.0 field names plus listed extensions` },
     { href: `views/${view.id}.json`, label: "Cross-entry view (JSON)", note: "derived; every value drawn on the Explore tab, with derivations" },
     ...(rec.method === "HDX-NMR" ? [{ href: `entries/${rec.id}.residues.csv`, label: "Per-residue HDX-NMR values (CSV)", note: "sample, label_seq_id, auth_seq_id, ΔG, kobs, kint" }] : []),
-    ...(rec.kind === "structure" ? [{ href: `structures/${view.external_refs.pdb}.cif`, label: `Structure ${view.external_refs.pdb} (mmCIF)`, note: "copy of the RCSB file; SHA-256 in the source lock" }] : []),
+    ...(rec.kind === "structure" ? [{ href: `structures/${rec.external_refs.pdb}.cif`, label: `Structure ${rec.external_refs.pdb} (mmCIF)`, note: "copy of the RCSB file; SHA-256 in the source lock" }] : []),
     { href: "sources.lock.json", label: "Source lock (JSON)", note: "URL, SHA-256 and license of every input, plus pinned code commits" },
-    { href: "schema/hdx_entry.v0.1.json", label: "Entry schema (JSON Schema)", note: "draft 0.1.0" },
-    { href: "schema/hdx_view.v0.1.json", label: "View schema (JSON Schema)", note: "draft 0.1.0" },
+    { href: "schema/hdx_entry.v0.2.json", label: "Entry schema (JSON Schema)", note: "draft 0.2.0" },
+    { href: "schema/hdx_view.v0.2.json", label: "View schema (JSON Schema)", note: "draft 0.2.0" },
   ];
   return (
     <ul className="divide-y divide-line rounded-lg border border-line bg-white">

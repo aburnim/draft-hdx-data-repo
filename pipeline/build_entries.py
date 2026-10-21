@@ -9,9 +9,9 @@ cross-entry view (the Explore tab).
 
 Reads data/raw/ (see fetch.py) and writes, under web/public/:
   index.json                     the HDX entries (front page list)
-  entries/<id>.json              entry records (schema/hdx_entry.v0.1.json)
+  entries/<id>.json              entry records (schema/hdx_entry.v0.2.json)
   entries/<id>.residues.csv      per-residue values of an HDX-NMR entry
-  views/<view>.json              cross-entry views (schema/hdx_view.v0.1.json)
+  views/<view>.json              cross-entry views (schema/hdx_view.v0.2.json)
   structures/<pdb>.cif           reference coordinates
 
     python pipeline/build_entries.py
@@ -35,12 +35,14 @@ from ijson.common import ObjectBuilder
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
 OUT = ROOT / "web" / "public"
-SCHEMA_ENTRY = json.loads((ROOT / "schema" / "hdx_entry.v0.1.json").read_text())
-SCHEMA_VIEW = json.loads((ROOT / "schema" / "hdx_view.v0.1.json").read_text())
+SCHEMA_ENTRY = json.loads((ROOT / "schema" / "hdx_entry.v0.2.json").read_text())
+SCHEMA_VIEW = json.loads((ROOT / "schema" / "hdx_view.v0.2.json").read_text())
 LOCK = {f["id"]: f for f in json.loads((ROOT / "sources.lock.json").read_text())["files"]}
 REPOS = json.loads((ROOT / "sources.lock.json").read_text())["repos"]
 COMMIT = {r["repo"].rsplit("/", 1)[1]: r["commit"] for r in REPOS}
-VERSION = "0.1.0"
+VERSION = "0.2.0"
+REVISION = {"revision_number": 1, "parent_revision_id": None, "state": "active", "published_at": None,
+            "change_summary": "Initial import from the published archives"}
 
 # Proteins with HDX-NMR data and a PDB structure whose sequence is identical to their
 # 6xHis HDX-NMR construct (checked against Dataset_4; see README).
@@ -205,6 +207,8 @@ def read_structure(pdb: str) -> dict:
         "modeled_residues": sum(len(ch) for ch in first),
         "sequence": "".join(p["letter"] for p in positions),
         "positions": positions,
+        "ligands": sorted({gemmi.cif.as_string(r[0]) for r in block.find("_pdbx_nonpoly_scheme.", ["mon_id"])} - {"HOH"}),
+        "resolution": num(gemmi.cif.as_string(block.find_value("_refine.ls_d_res_high") or "")) if block.find_value("_refine.ls_d_res_high") else None,
     }
 
 
@@ -419,7 +423,7 @@ def build_protein(name: str, pdb: str, d3_rows: list[tuple[str, dict]], d4_rows:
          "title": f"PDB {pdb}: deposited model, {struct['n_models']} conformers", "format": "mmcif",
          "uri": lock_uri(pdb_key), "sha256": LOCK[pdb_key]["sha256"], "license": "CC0-1.0", "held": True},
         {"id": "a_view", "kind": "artifact", "entry": None, "short": "view record", "level": "L3",
-         "title": "Cross-entry view, with L3 metrics computed by this repository", "format": "json",
+         "title": "Cross-entry view: residue mapping to the reference structure and cross-method comparison (computed here)", "format": "json",
          "uri": f"views/{view_id}.json", "sha256": None, "license": "CC-BY-4.0", "held": True},
     ]
     runs = [
@@ -463,6 +467,7 @@ def build_protein(name: str, pdb: str, d3_rows: list[tuple[str, dict]], d4_rows:
     view = {
         "schema_version": VERSION,
         "id": view_id,
+        "kind": "intact",
         "name": name,
         "title": struct["title"],
         "grouping": f"Entries whose polymer-entity sequences are contained in the {pdb} sequence.",
@@ -602,12 +607,31 @@ def build_protein(name: str, pdb: str, d3_rows: list[tuple[str, dict]], d4_rows:
         "citation": CITATION,
     }
 
-    structure_entry = {
-        "schema_version": VERSION, "id": ids["structure"], "kind": "structure", "state": "active", "revision": revision,
+    structure_entry = structure_record(pdb, struct, ids["structure"], view_id,
+                                       [x for x in linked if x["entry"] != ids["structure"]], CITATION, revision)
+
+    csv_rows = [{"sample": r["sample"], "label_seq_id": r["label_seq_id"], "auth_seq_id": r["auth_seq_id"],
+                 "label_comp_id": r["label_comp_id"], "dG_kcal_mol": r["dg"], "kobs_per_s": r["kobs"],
+                 "kint_per_s": r["kint"], "too_slow": r["too_slow"]} for r in residue_data]
+    return view, [mhdx_entry, nmr_entry, structure_entry], csv_rows
+
+
+def structure_record(pdb: str, struct: dict, entry_id: str, view_id: str, linked: list[dict], citation: str,
+                     revision: dict, notes: list[str] | None = None) -> dict:
+    """A reference-structure entry: the deposited model as a v0.2.0 'Deposited' model with
+    purpose 'Reference'. Used for comparison and residue numbering, not as ground truth."""
+    pdb_key = f"pdb_{pdb.lower()}"
+    ensemble = struct["n_models"] > 1
+    return {
+        "schema_version": VERSION, "id": entry_id, "kind": "structure", "state": "active", "revision": revision,
         "title": struct["title"],
         "method": struct["method"],
         "method_source": "mmCIF _exptl.method",
-        "polymer_entities": [polymer_entity("pe_1", chain["entity_description"] or "deposited construct", full_seq)],
+        "polymer_entities": [{"id": "pe_1", "description": struct["chain"]["entity_description"] or "deposited construct",
+                              "construct": None, "sequence": struct["sequence"], "source_organisms": [], "mutations": [],
+                              "uniprot_mappings": []}],
+        "ligands": struct["ligands"],
+        "resolution": struct["resolution"],
         "artifacts": [
             {"id": "a_pdb", "name": f"{pdb}.cif", "level": "L2", "type": "model", "format": "mmcif",
              "uri": lock_uri(pdb_key), "size_bytes": LOCK[pdb_key]["bytes"], "sha256": LOCK[pdb_key]["sha256"],
@@ -615,22 +639,18 @@ def build_protein(name: str, pdb: str, d3_rows: list[tuple[str, dict]], d4_rows:
         ],
         "runs": [],
         "models": [{
-            "id": f"{ids['structure']}_m_001", "revision_number": 1, "title": f"Deposited model (PDB {pdb})",
+            "id": f"{entry_id}_m_001", "revision_number": 1, "title": f"Deposited model (PDB {pdb})",
             "model_type": "Deposited", "purpose": "Reference", "model_source": "pdb", "authors": [],
             "primary_artifact": "a_pdb", "ensemble_members": struct["n_models"],
             "atom_count": struct["atom_count"], "modeled_residues": struct["modeled_residues"], "unique_protein_chains": 1,
             "metrics": [],
         }],
         "external_refs": {"pdb": pdb},
-        "view": view_id, "linked_entries": [x for x in linked if x["entry"] != ids["structure"]],
-        "extensions": ["atom_count and modeled_residues are counted on the first of the ensemble's conformers"],
-        "citation": CITATION,
+        "view": view_id, "linked_entries": linked,
+        "extensions": (["atom_count and modeled_residues are counted on the first of the ensemble's conformers"] if ensemble else [])
+                      + (notes or []),
+        "citation": citation,
     }
-
-    csv_rows = [{"sample": r["sample"], "label_seq_id": r["label_seq_id"], "auth_seq_id": r["auth_seq_id"],
-                 "label_comp_id": r["label_comp_id"], "dG_kcal_mol": r["dg"], "kobs_per_s": r["kobs"],
-                 "kint_per_s": r["kint"], "too_slow": r["too_slow"]} for r in residue_data]
-    return view, [mhdx_entry, nmr_entry, structure_entry], csv_rows
 
 
 def nmr_conds_public(conds: list[dict]) -> list[dict]:
@@ -800,7 +820,22 @@ def main() -> None:
         raw_n = sum(1 for a in entries[0]["artifacts"] if a["level"] == "L0")
         print(f"{view['id']:10s} {name:16s} entries={[e['id'] for e in entries]} nmr_samples={len(entries[1]['hdx']['samples'])} raw_files={raw_n}")
     shutil.copyfile(ROOT / "sources.lock.json", OUT / "sources.lock.json")
-    for f in ("hdx_entry.v0.1.json", "hdx_view.v0.1.json"):
+    # peptide-level HDX-MS (ecDHFR)
+    import build_peptide
+    pview, pentries, _ = build_peptide.build(REVISION)
+    jsonschema.validate(pview, SCHEMA_VIEW)
+    (OUT / "views" / f"{pview['id']}.json").write_text(json.dumps(pview, separators=(",", ":")))
+    for e in pentries:
+        jsonschema.validate(e, SCHEMA_ENTRY)
+        (OUT / "entries" / f"{e['id']}.json").write_text(json.dumps(e, separators=(",", ":")))
+    for x in pview["structures"]:
+        shutil.copyfile(RAW / f"{x['pdb']}.cif", OUT / "structures" / f"{x['pdb']}.cif")
+    pe = pentries[0]
+    listed.append({"id": pe["id"], "name": pview["name"], "method": "HDX-MS (peptide)", "samples": len(pe["hdx"]["samples"]),
+                   "constructs": [s["id"] for s in pe["hdx"]["samples"]], "dg_max": None,
+                   "pdb": pview["external_refs"]["pdb"], "structure_entry": pview["structures"][0]["entry"], "raw": f"PRIDE {build_peptide.PRIDE}"})
+    print(f"{pview['id']:10s} {pview['name']:16s} entries={[e['id'] for e in pentries]} peptides={len(pview['peptides'])}")
+    for f in ("hdx_entry.v0.2.json", "hdx_view.v0.2.json"):
         shutil.copyfile(ROOT / "schema" / f, OUT / "schema" / f)
     (OUT / "index.json").write_text(json.dumps({"schema_version": VERSION, "entries": listed}, indent=2) + "\n")
     print(f"index: {len(listed)} HDX entries")

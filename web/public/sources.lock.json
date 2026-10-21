@@ -90,6 +90,67 @@
       "title": "PRIDE file listing for PXD061702 (names, sizes, FTP locations)",
       "sha256": "fdd7ba861ccf400979a1c3ac9b14db60d4a625394a0a52c80d6146af6e646bfa",
       "bytes": 1353575
+    },
+    {
+      "id": "pride_pxd057539",
+      "file": "PXD057539.json",
+      "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD057539",
+      "license": "CC0-1.0",
+      "level": "L0",
+      "title": "PRIDE project record for the PIGEON-FEATHER datasets (protocols, software, thresholds)",
+      "sha256": "ad58f5695aa9c864be82705fb76836251ec3211fba95a0ef6c3f6dc2b5dcb07f",
+      "bytes": 6640
+    },
+    {
+      "id": "pride_pxd057539_files",
+      "file": "PXD057539_files.json",
+      "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD057539/files/all",
+      "license": "CC0-1.0",
+      "level": "L0",
+      "title": "PRIDE file listing for PXD057539",
+      "sha256": "ddd2a57bc161df4bf5eb83721a4d50eacb73e28918e4fb60ff0254111bd7255c",
+      "bytes": 67797
+    },
+    {
+      "id": "hxms_supplement",
+      "file": "btag113_supplementary_data.zip",
+      "url": "https://academic.oup.com/bioinformatics/article/42/4/btag113/8512511",
+      "manual": true,
+      "license": "unverified (preprint version CC-BY-4.0)",
+      "level": "L1",
+      "title": "Supplementary data of Weber et al., HXMS format (Bioinformatics 2026): ecDHFR APO/MTX/TMP .hxms files",
+      "sha256": "77b3d872a37e0af7a3b0de8646d98c0bfab76e3eaee6563f1bf504e611e53fd4",
+      "bytes": 17092417
+    },
+    {
+      "id": "pdb_5dfr",
+      "file": "5DFR.cif",
+      "url": "https://files.rcsb.org/download/5DFR.cif",
+      "license": "CC0-1.0",
+      "level": "L2",
+      "title": "PDB 5DFR, X-ray structure of E. coli DHFR, unliganded",
+      "sha256": "4f6e307f25810995d667ad8df17ad47489f4e681bf46a5dabfa3f12b34b014b2",
+      "bytes": 193557
+    },
+    {
+      "id": "pdb_1rg7",
+      "file": "1RG7.cif",
+      "url": "https://files.rcsb.org/download/1RG7.cif",
+      "license": "CC0-1.0",
+      "level": "L2",
+      "title": "PDB 1RG7, X-ray structure of E. coli DHFR, methotrexate complex",
+      "sha256": "0e4674ba8cd5832db2e4b9c20db133f36e0f43aa800c202cf75f042b75a5f3fd",
+      "bytes": 188571
+    },
+    {
+      "id": "pdb_6xg5",
+      "file": "6XG5.cif",
+      "url": "https://files.rcsb.org/download/6XG5.cif",
+      "license": "CC0-1.0",
+      "level": "L2",
+      "title": "PDB 6XG5, X-ray structure of E. coli DHFR, trimethoprim complex",
+      "sha256": "cfd594bfbb9df0bf56673ccc7c74369744dade11ba85cdbab2a24e70afed8595",
+      "bytes": 352164
     }
   ],
   "repos": [
@@ -104,6 +165,10 @@
     {
       "repo": "https://github.com/Rocklin-Lab/mhdx_analysis",
       "commit": "5ea0e8cd55fdec9320801d0b0ac73efaeed96d56"
+    },
+    {
+      "repo": "https://github.com/glasgowlab/PIGEON-FEATHER",
+      "commit": "ad0d9f3092825f3269cd3ef16914ea30460a6827"
     }
   ]
 }

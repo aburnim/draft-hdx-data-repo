@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://prism.astera.org/schema/hdx_view/0.1.0",
+  "$id": "https://prism.astera.org/schema/hdx_view/0.2.0",
   "title": "HDX cross-entry view (derived)",
   "description": "A derived display record joining the entries that share one protein sequence (mHDX-MS, HDX-NMR, reference structure): residue tracks keyed on author numbering for the viewer, provenance nodes and runs, and derivations for every displayed value. Not a primary record; rebuilt from entry sources. Absent values are null, never zero.",
   "type": "object",
@@ -17,7 +17,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "0.1.0"
+      "const": "0.2.0"
     },
     "id": {
       "type": "string",
@@ -44,7 +44,8 @@
             "de novo design",
             "design variant",
             "natural domain",
-            "PDB-derived domain"
+            "PDB-derived domain",
+            "natural protein"
           ]
         },
         "topology": {
@@ -538,9 +539,11 @@
           },
           "level": {
             "enum": [
+              "L1",
               "L2",
               "L3"
-            ]
+            ],
+            "description": "L1 for technical reproducibility of processed data"
           },
           "interpretation": {
             "type": "string"
@@ -591,6 +594,37 @@
           }
         }
       }
+    },
+    "kind": {
+      "enum": [
+        "intact",
+        "peptide"
+      ],
+      "description": "intact-protein mHDX-MS view, or peptide-level HDX-MS view"
+    },
+    "structures": {
+      "description": "peptide-level view field (kind 'peptide')"
+    },
+    "time_bins": {
+      "description": "peptide-level view field (kind 'peptide')"
+    },
+    "peptides": {
+      "description": "peptide-level view field (kind 'peptide')"
+    },
+    "uptake": {
+      "description": "peptide-level view field (kind 'peptide')"
+    },
+    "fd": {
+      "description": "peptide-level view field (kind 'peptide')"
+    },
+    "reproducibility": {
+      "description": "peptide-level view field (kind 'peptide')"
+    },
+    "comparisons": {
+      "description": "peptide-level view field (kind 'peptide')"
+    },
+    "states": {
+      "description": "peptide-level view field (kind 'peptide')"
     }
   }
 }

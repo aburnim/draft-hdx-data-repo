@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 
-import type { Artifact, View, Level, Run } from "./types";
+import type { AnyView as View, Artifact, Level, Run } from "./types";
 
 // Lineage as W3C PROV draws it: artifacts (entities) and runs (activities), with an edge
 // for every input a run used and every output it generated. Artifacts sit in columns by
 // data level; each run sits in the gap after its latest input.
 
 const LEVELS: Level[] = ["L0", "L1", "L2", "L3"];
-const LEVEL_NAMES: Record<Level, string> = { L0: "Source", L1: "Processed", L2: "Interpreted", L3: "Evaluated" };
+const LEVEL_NAMES: Record<Level, string> = { L0: "Source", L1: "Processed", L2: "Interpreted", L3: "Mapped to structure" };
 const A_W = 196;
 const A_H = 62;
 const R_W = 136;
@@ -103,7 +103,7 @@ export default function Provenance({ entry, highlight }: { entry: View; highligh
                 <g key={n.id} onClick={() => setPicked(n.id)} className="cursor-pointer">
                   <rect x={n.x} y={n.y} width={R_W} height={R_H} rx={R_H / 2} fill={active ? "#f1edfd" : "#f2f3f8"} stroke={active ? "#663be4" : "#d5d7e4"} />
                   <text x={n.x + R_W / 2} y={n.y + R_H / 2 + 4} textAnchor="middle" style={{ font: "500 10.5px 'IBM Plex Mono', monospace" }} fill="#3d414f">
-                    {n.r.software.length > 18 ? `${n.r.software.slice(0, 17)}…` : n.r.software}
+                    {n.r.software.startsWith("hdx-data-repo") ? `${n.r.id} (here)` : n.r.software.length > 18 ? `${n.r.software.slice(0, 17)}…` : n.r.software}
                   </text>
                 </g>
               );

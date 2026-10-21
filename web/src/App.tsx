@@ -53,7 +53,7 @@ export default function App() {
       </main>
       <footer className="mx-auto max-w-7xl px-4 pb-8 text-[11px] text-ink-muted">
         Data: Ferrari et al. 2026 (Zenodo 10.5281/zenodo.14983481, CC-BY-4.0; PRIDE PXD061702); Lu et al. 2026 (PRIDE PXD057539, CC0) and
-        Weber et al. 2026 (HXMS supplement); structures from the PDB (CC0). Each entry lists its sources on the Provenance tab.
+        Weber et al. 2026 (HXMS supplement); structures from the PDB (CC0). Each entry lists its sources on its Overview tab.
         Viewer components adapted from hetstar (rtviii). A Prism prototype, Astera Institute.
       </footer>
     </div>

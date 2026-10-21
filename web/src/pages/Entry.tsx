@@ -1,6 +1,6 @@
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 import { fmt, metricLabel, useJSON } from "../hdx/data";
 import Explorer from "../hdx/Explorer";
@@ -16,7 +16,6 @@ const TABS = [
   { id: "explore", label: "Explore" },
   { id: "overview", label: "Overview" },
   { id: "models", label: "Models" },
-  { id: "provenance", label: "Provenance" },
   { id: "downloads", label: "Downloads" },
 ] as const;
 
@@ -25,10 +24,14 @@ const KIND_LABEL: Record<string, string> = { "mHDX-MS": "mHDX-MS", "HDX-NMR": "H
 export default function Entry({ id, tab }: { id: string; tab: string }) {
   const { data: rec, error } = useJSON<EntryRecord>(`entries/${id}.json`);
   const { data: view, error: viewError } = useJSON<View>(rec ? `views/${rec.view}.json` : null);
+  // provenance is part of the Overview tab; old #/entry/<id>/provenance links scroll to it
+  useEffect(() => {
+    if (tab === "provenance" && rec && view) document.getElementById("provenance")?.scrollIntoView();
+  }, [tab, rec, view]);
   if (error) return <p className="text-danger">No entry {id}. <a className="underline" href="#/">Back to all entries</a>.</p>;
   if (viewError) return <p className="text-danger">Could not load the cross-entry view: {viewError}</p>;
   if (!rec || !view) return <p className="text-ink-muted">Loading entry…</p>;
-  const active = TABS.some((t) => t.id === tab) ? tab : "explore";
+  const active = tab === "provenance" ? "overview" : TABS.some((t) => t.id === tab) ? tab : "explore";
 
   return (
     <div className="flex flex-col gap-4">
@@ -84,7 +87,6 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
         )}
         {active === "overview" && <Overview rec={rec} view={view} />}
         {active === "models" && <Models rec={rec} view={view} />}
-        {active === "provenance" && <ProvenanceTab rec={rec} view={view} />}
         {active === "downloads" && <Downloads rec={rec} view={view} />}
       </ProvenanceProvider>
     </div>
@@ -191,6 +193,11 @@ function Overview({ rec, view }: { rec: EntryRecord; view: View }) {
           </div>
         </div>
       </div>
+
+      <section id="provenance" className="flex scroll-mt-4 flex-col gap-2">
+        <H2>Provenance</H2>
+        <ProvenanceSection rec={rec} view={view} />
+      </section>
 
       <section className="flex flex-col gap-2">
         <H2>Polymer entities</H2>
@@ -326,7 +333,7 @@ function Models({ rec, view }: { rec: EntryRecord; view: View }) {
   );
 }
 
-function ProvenanceTab({ rec, view }: { rec: EntryRecord; view: View }) {
+function ProvenanceSection({ rec, view }: { rec: EntryRecord; view: View }) {
   const size = (n?: number) => (n == null ? "–" : n > 1e9 ? `${(n / 1e9).toFixed(2)} GB` : n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${(n / 1e3).toFixed(0)} kB`);
   const raw = rec.artifacts.filter((a) => a.level === "L0");
   const other = rec.artifacts.filter((a) => a.level !== "L0");

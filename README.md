@@ -149,9 +149,9 @@ npm run dev                         # http://localhost:5173
 
 The built site (`web/dist/`) is static. Routes:
 
-- `#/` the 10 HDX entries
-- `#/entry/<hdx_id>/<tab>`; tabs: Explore (cross-entry view), Overview, Models,
-  Provenance, Downloads
+- `#/` the 11 HDX entries
+- `#/entry/<hdx_id>/<tab>`; tabs: Explore (cross-entry view), Overview, Models, Downloads.
+  `#/entry/<hdx_id>/provenance` opens the Overview tab at its Provenance section.
 
 ### What the entry page shows
 
@@ -160,11 +160,12 @@ The built site (`web/dist/`) is static. Routes:
   deuteration at time *t*, or secondary structure; a ΔG threshold; sequence lanes (from
   hetstar); sorted-ΔG, uptake, isotope-distribution, chiclet, butterfly and ΔΔG plots.
   Hover and selection are shared between the structure, lanes and residue plots.
-- **Overview:** method, polymer entities, samples, metrics, the schema extensions used,
-  and a table of where each value comes from.
-- **Models:** the entry's models; for HDX entries, L3 agreement with the linked entry.
-- **Provenance:** the run graph of the linked entries, with this entry's nodes tinted,
-  and its artifacts (including the PRIDE mzML files with FTP links).
+- **Overview,** in order: method, metrics and the schema extensions used; a Provenance
+  section (the run graph of the linked entries, with this entry's nodes tinted, and the
+  entry's artifacts, including the PRIDE raw files with FTP links); polymer entities;
+  samples; and a table of where each value comes from.
+- **Models:** the entry's models; for intact-protein HDX entries, the exploratory
+  cross-method comparison with the linked entry.
 - **Per-value provenance:** every metric, plot and structure coloring has a source line
   (file · field · row) and a tier, *copied* or *computed here*. It opens a card with the
   input files and checksums, the run chain at pinned commits, any operation applied here

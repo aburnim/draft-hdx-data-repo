@@ -7,7 +7,6 @@ dependencies:
   - pandas
   - numpy
   - scipy
-  - ijson
   - gemmi
   - jsonschema
   - requests

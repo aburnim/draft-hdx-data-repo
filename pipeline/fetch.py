@@ -22,63 +22,9 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
 LOCK = ROOT / "sources.lock.json"
 
-ZENODO = "https://zenodo.org/records/14983481/files"
-ZENODO_LICENSE = "CC-BY-4.0"
-
 # One row per file. `level` follows Dynamic PDB's data levels, used loosely for HDX
 # (see README, "Data model").
 SOURCES = [
-    {
-        "id": "zenodo_dataset4",
-        "file": "Dataset_4_HDXNMR.json",
-        "url": f"{ZENODO}/Dataset_4_HDXNMR.json?download=1",
-        "license": ZENODO_LICENSE,
-        "level": "L2",
-        "title": "HDX-NMR per-residue exchange rates and unfolding free energies (13 proteins)",
-    },
-    {
-        "id": "zenodo_dataset3",
-        "file": "Dataset_3_MeasurablyStable.json",
-        "url": f"{ZENODO}/Dataset_3_MeasurablyStable.json?download=1",
-        "license": ZENODO_LICENSE,
-        "level": "L1",
-        "title": "mHDX-MS isotope distributions and fitted exchange rates, measurably stable domains",
-    },
-    # Reference structures: each PDB sequence is identical to the 6xHis HDX-NMR construct
-    # of the protein named in its title (checked against Dataset_4).
-    *[
-        {
-            "id": f"pdb_{pdb.lower()}",
-            "file": f"{pdb}.cif",
-            "url": f"https://files.rcsb.org/download/{pdb}.cif",
-            "license": "CC0-1.0",
-            "level": "L2",
-            "title": f"PDB {pdb}, NMR structure of {name}",
-        }
-        for pdb, name in [
-            ("8SKE", "EEHEE_rd4_0642"),
-            ("8SKD", "EEHEE_rd4_0871"),
-            ("8SKX", "HHH_rd4_0518"),
-            ("5UYO", "HEEH_rd4_0097"),
-            ("8SHM", "EHEE_rd2_0005"),
-        ]
-    ],
-    {
-        "id": "pride_pxd061702",
-        "file": "PXD061702.json",
-        "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD061702",
-        "license": "CC0-1.0",
-        "level": "L0",
-        "title": "PRIDE project record for the raw mHDX-MS files",
-    },
-    {
-        "id": "pride_pxd061702_files",
-        "file": "PXD061702_files.json",
-        "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD061702/files/all",
-        "license": "CC0-1.0",
-        "level": "L0",
-        "title": "PRIDE file listing for PXD061702 (names, sizes, FTP locations)",
-    },
     # --- peptide-level HDX-MS: ecDHFR, Glasgow lab (Lu et al. 2026, Nat. Chem. Biol.) ---
     {
         "id": "pride_pxd057539",
@@ -122,8 +68,7 @@ SOURCES = [
 ]
 
 # Code is pinned by commit, not downloaded: the lock records what was current when fetched.
-REPOS = ["Rocklin-Lab/mhdx_pipeline", "Rocklin-Lab/hdxrate_pipeline", "Rocklin-Lab/mhdx_analysis",
-         "glasgowlab/PIGEON-FEATHER"]
+REPOS = ["glasgowlab/PIGEON-FEATHER"]
 
 
 def sha256(path: Path) -> str:

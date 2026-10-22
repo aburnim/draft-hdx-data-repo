@@ -3,7 +3,6 @@ import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { type ReactNode, useEffect } from "react";
 
 import { fmt, metricLabel, useJSON } from "../hdx/data";
-import Explorer from "../hdx/Explorer";
 import PeptideExplorer from "../hdx/PeptideExplorer";
 import Provenance from "../hdx/Provenance";
 import { derivationLabel, ProvenanceProvider, RAW_STYLE, SourceLine, TIER_STYLE } from "../hdx/provenance-card";
@@ -18,8 +17,6 @@ const TABS = [
   { id: "models", label: "Models" },
   { id: "downloads", label: "Downloads" },
 ] as const;
-
-const KIND_LABEL: Record<string, string> = { "mHDX-MS": "mHDX-MS", "HDX-NMR": "HDX-NMR" };
 
 export default function Entry({ id, tab }: { id: string; tab: string }) {
   const { data: rec, error } = useJSON<EntryRecord>(`entries/${id}.json`);
@@ -41,14 +38,13 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
       <header className="flex flex-col gap-2 border-b border-line pb-4">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-[26px] font-semibold tracking-tight text-ink">{view.name}</h1>
-          <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[12px] font-semibold text-accent">{KIND_LABEL[rec.method] ?? rec.method}</span>
+          <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[12px] font-semibold text-accent">{rec.method}</span>
           <span className="font-mono text-[13px] text-ink-muted">{rec.id}</span>
         </div>
         <p className="text-[14px] text-ink-secondary">{rec.title}</p>
         <div className="flex flex-wrap gap-1.5">
           {rec.kind === "structure" && rec.external_refs.pdb && <Badge k="PDB" v={rec.external_refs.pdb} href={`https://www.rcsb.org/structure/${rec.external_refs.pdb}`} />}
           {rec.external_refs.pride && <Badge k="PRIDE" v={rec.external_refs.pride} href={`https://www.ebi.ac.uk/pride/archive/projects/${rec.external_refs.pride}`} />}
-          {rec.external_refs.zenodo && <Badge k="Zenodo" v={rec.external_refs.zenodo.split(".").pop()!} href={`https://doi.org/${rec.external_refs.zenodo}`} />}
           {rec.external_refs.doi && <Badge k="DOI" v={rec.external_refs.doi} href={`https://doi.org/${rec.external_refs.doi}`} />}
           <Badge k="Schema" v={rec.schema_version} />
           <Badge k="Revision" v={`${rec.revision.revision_number} · ${rec.revision.state}`} />
@@ -82,7 +78,7 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
             <p className="text-[12px] text-ink-muted">
               Cross-entry view <span className="font-mono">{view.id}</span>: {view.grouping}
             </p>
-            {view.kind === "peptide" ? <PeptideExplorer view={view} /> : <Explorer entry={view} />}
+            <PeptideExplorer view={view} />
           </>
         )}
         {active === "overview" && <Overview rec={rec} view={view} />}
@@ -214,18 +210,17 @@ function Overview({ rec, view }: { rec: EntryRecord; view: View }) {
         <section className="flex flex-col gap-2">
           <H2>Samples</H2>
           <Table
-            head={["Sample", "Construct", samples.some((s) => s.ligand !== undefined) ? "Ligand · replicates" : "Measurement", "pH", "Temperature", "Buffer", "Labeling times", "Source"]}
+            head={["Sample", "Construct", "Ligand · replicates", "pH", "Temperature", "Buffer", "Labeling times", "Source"]}
             rows={samples.map((s) => [
               <span className="font-mono">{s.id}</span>,
               pe.get(s.polymer_entity)?.construct ?? s.polymer_entity,
-              s.ligand !== undefined ? `${s.ligand ?? "none"} · ${(s.replicates ?? []).join(", ")}` : (s.measurement ?? "–"),
-              s.pH != null ? `${s.pH.toFixed(1)}${s.pH_kind === "pH(read)" ? " (read)" : ""}` : (s.pH_labels ? s.pH_labels.join(" + ") + (s.merged_pH_series ? " (merged)" : "") : s.conditions_differ ? "mixed" : "not reported"),
-              s.temperature_kelvin != null ? `${s.temperature_kelvin} K` : s.conditions_differ ? "mixed" : "not reported",
-              s.buffer ?? (s.conditions_differ ? "mixed" : "not reported"),
+              `${s.ligand ?? "none"} · ${(s.replicates ?? []).join(", ")}`,
+              s.pH != null ? `${s.pH.toFixed(1)}${s.pH_kind === "pH(read)" ? " (read)" : ""}` : "not reported",
+              s.temperature_kelvin != null ? `${s.temperature_kelvin} K` : "not reported",
+              s.buffer ?? "not reported",
               s.labeling_times_s ? `${s.labeling_times_s.length}` : "–",
               <span className="font-mono text-[11px]">
                 {s.source.artifact}{s.source.rows.length ? ` · row ${s.source.rows.join(", ")}` : ""}
-                {s.mean_of_rows ? <span className="block font-sans text-ink-muted">mean of rows {s.mean_of_rows.join(", ")}{s.conditions_differ ? "; conditions differ" : ""}</span> : null}
               </span>,
             ])}
             minWidth={760}
@@ -288,12 +283,11 @@ function SourcesTable({ view, rec }: { view: View; rec: EntryRecord }) {
 function Models({ rec, view }: { rec: EntryRecord; view: View }) {
   const runs = new Map(rec.runs.map((r) => [r.id, r]));
   const arts = new Map(rec.artifacts.map((a) => [a.id, a]));
-  const l3 = view.metrics.filter((m) => m.level === "L3");
   return (
     <div className="flex flex-col gap-4">
       <p className="max-w-3xl text-[13px] leading-relaxed text-ink-secondary">
         Models are interpretations of this entry&apos;s data and are peers of each other. Values from linked entries are
-        compared on the Explore tab and in the L3 metrics below; they are not models of this entry.
+        compared on the Explore tab; they are not models of this entry.
       </p>
       <div className="grid gap-3 lg:grid-cols-2">
         {rec.models.map((m) => {
@@ -304,7 +298,7 @@ function Models({ rec, view }: { rec: EntryRecord; view: View }) {
               <div className="font-mono text-[10.5px] text-ink-muted">{m.id} · revision {m.revision_number}</div>
               <h3 className="text-[14px] font-semibold text-ink">{m.title}</h3>
               <Facts rows={[
-                ["Model type", <>{m.model_type}{m.model_type === "HDX ΔG set" && <span className="text-ink-muted"> (extension)</span>}</>],
+                ["Model type", <>{m.model_type}{m.model_type === "HDX differential set" && <span className="text-ink-muted"> (extension)</span>}</>],
                 ["Purpose · source", `${m.purpose} · ${m.model_source}`],
                 ["Data", src ? <a className="text-accent underline" href={src.uri} target="_blank" rel="noreferrer">{src.name}</a> : "–"],
                 ...(m.source?.selector ? [["Fields · rows", <span className="font-mono text-[11px]">{m.source.selector.fields?.join(", ")} · {m.source.selector.rows?.join(", ")}</span>] as [string, ReactNode]] : []),
@@ -318,17 +312,6 @@ function Models({ rec, view }: { rec: EntryRecord; view: View }) {
           );
         })}
       </div>
-      {rec.kind === "hdx" && l3.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <H2>Cross-method comparison with the linked entry (exploratory)</H2>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{l3.map((m) => <MetricTile key={m.key} m={m} />)}</div>
-          <p className="max-w-3xl text-[11.5px] text-ink-muted">
-            Computed by this repository; not reported by the authors. Compares sorted mHDX-MS ΔG with sorted HDX-NMR ΔG of
-            the construct closest to the mHDX-MS construct, over the k highest-ΔG sites, where k is the smaller site count.
-            Sites are matched by rank, not by residue. The metric is exploratory and unvalidated.
-          </p>
-        </section>
-      )}
     </div>
   );
 }
@@ -368,7 +351,6 @@ function Downloads({ rec, view }: { rec: EntryRecord; view: View }) {
   const files = [
     { href: `entries/${rec.id}.json`, label: "Entry record (JSON)", note: `schema ${rec.schema_version}; Dynamic PDB v0.2.0 field names plus listed extensions` },
     { href: `views/${view.id}.json`, label: "Cross-entry view (JSON)", note: "derived; every value drawn on the Explore tab, with derivations" },
-    ...(rec.method === "HDX-NMR" ? [{ href: `entries/${rec.id}.residues.csv`, label: "Per-residue HDX-NMR values (CSV)", note: "sample, label_seq_id, auth_seq_id, ΔG, kobs, kint" }] : []),
     ...(rec.kind === "structure" ? [{ href: `structures/${rec.external_refs.pdb}.cif`, label: `Structure ${rec.external_refs.pdb} (mmCIF)`, note: "copy of the RCSB file; SHA-256 in the source lock" }] : []),
     { href: "sources.lock.json", label: "Source lock (JSON)", note: "URL, SHA-256 and license of every input, plus pinned code commits" },
     { href: "schema/hdx_entry.v0.2.json", label: "Entry schema (JSON Schema)", note: "draft 0.2.0" },

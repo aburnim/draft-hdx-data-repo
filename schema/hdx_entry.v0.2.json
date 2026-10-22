@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://prism.astera.org/schema/hdx_entry/0.2.0",
   "title": "HDX entry (draft 0.2.0)",
-  "description": "One experimental context: an HDX measurement (mHDX-MS or HDX-NMR) or a reference structure. Field names follow the Dynamic PDB schema v0.2.0 (2026-10-16) where an equivalent exists; HDX-specific additions are listed per record in `extensions`. Absent values are null or omitted, never zero.",
+  "description": "One experimental context: an HDX-MS measurement or a reference structure. Field names follow the Dynamic PDB schema v0.2.0 (2026-10-16) where an equivalent exists; HDX-specific additions are listed per record in `extensions`. Absent values are null or omitted, never zero.",
   "type": "object",
   "required": [
     "schema_version",

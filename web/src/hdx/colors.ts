@@ -7,14 +7,9 @@ export const STABILITY_RAMP = [0xf0f0f0, 0xfdae61, 0xd7191c];
 export const DEUTERATION_RAMP = [0x2166ac, 0xf7f7f7, 0xb2182b];
 /** hetstar's missing-value grey (density.ts METRIC_MISSING_COLOR). */
 export const MISSING_COLOR = 0xcfd8dc;
-/** residues measured but below the ΔG threshold: present, but faded back */
-export const FADED_COLOR = 0xf3f4f6;
 
-/** fixed series colors for methods and constructs, shared by plots and lanes */
-export const SERIES = {
-  mhdx: "#663be4",
-  nmr_6xhis_r1: "#e08214",
-  nmr_6xhis_r2: "#fdb863",
-  nmr_6xhis_mean: "#b35806",
-  nmr_nohis_r1: "#1b7837",
-} as Record<string, string>;
+/** CSS gradient of a ramp, for legends */
+export function rampGradient(stops: number[]): string {
+  const css = stops.map((c, i) => `#${c.toString(16).padStart(6, "0")} ${(100 * i) / (stops.length - 1)}%`);
+  return `linear-gradient(to right, ${css.join(", ")})`;
+}

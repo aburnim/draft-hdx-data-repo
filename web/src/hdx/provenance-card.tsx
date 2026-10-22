@@ -49,7 +49,7 @@ export function derivationLabel(d: Derivation): string {
   return d.id.startsWith("metric:") ? metricLabel(d.label).label : d.label;
 }
 
-/** "Dataset_3 · dg_max · row 214" for the first input, "+1 more" for the rest;
+/** "HXMS · TP, MATCH · rows APO, MTX, TMP" for the first input, "+1 more" for the rest;
  * compact drops rows and further inputs */
 export function inputSummary(entry: View, d: Derivation, compact = false): string {
   const arts = new Map(entry.artifacts.map((a) => [a.id, a]));

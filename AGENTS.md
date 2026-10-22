@@ -4,11 +4,11 @@ Instructions for AI agents and engineers working in this repository. Read this b
 changing code or data. `README.md` describes the project for human readers; this file
 records what exists, what remains, and the rules the work must follow.
 
-Status as of 2026-10-20, branch `feature/eehee-prototype` (not merged to `main`).
+Status as of 2026-10-22, branch `feature/eehee-prototype` (not merged to `main`).
 
 ## What this is
 
-A prototype registry for hydrogen-deuterium exchange (HDX) data, for the Prism project
+A prototype registry for hydrogen-deuterium exchange mass spectrometry (HDX-MS) data, for the Prism project
 (Astera Institute). Each entry is one experimental context. Every displayed value is traced
 to an archived source file. Raw data is cited in PRIDE, never copied. Field names follow the
 Dynamic PDB schema v0.2.0
@@ -21,6 +21,9 @@ with HDX additions listed per record in `extensions`.
 
 These come from the project owner and an HDX-MS reviewer. Do not relax them.
 
+- **HDX-MS only.** The registry holds HDX-MS data. HDX-NMR and intact-protein mHDX-MS
+  (Ferrari et al. 2026) were removed on 2026-10-22 and are out of scope; do not add them
+  back unless the owner asks.
 - **HDX-centered.** The front page lists HDX entries only (`#/`). Structures are supporting
   entries, reached from HDX entries.
 - **One entry per experimental context** (Dynamic PDB v0.2.0: one `method` per entry).
@@ -41,11 +44,9 @@ These come from the project owner and an HDX-MS reviewer. Do not relax them.
   L1c fully deuterated controls or the method used instead; L1d calibrated values as
   separate runs; L1 technical reproducibility; L2 validity filters, statistical tests,
   differential classes and residue projection; L3 mapping to structural models.
-- **Wording.** L3 is "mapping to structural models", not "agreement". Dataset_4 rows are
-  "measurements", not "replicates": several per-construct means average measurements at
-  different temperatures or pH.
-- **Exploratory analyses say so.** Anything computed here (L3 cross-method metrics, the
-  differential test, projection, corrections) is labeled "computed here" with its
+- **Wording.** L3 is "mapping to structural models", not "agreement".
+- **Exploratory analyses say so.** Anything computed here (the differential test,
+  projection, mapping, corrections) is labeled "computed here" with its
   parameters, and is not presented as validated.
 
 ### Writing requirements (site text, captions, README, docs)
@@ -54,8 +55,8 @@ Write in the style of scientific documentation: precise, concise, and accessible
 with relevant scientific knowledge.
 
 - **Name the object, operation and scope.** Say which data, models, measurements or
-  methods a sentence concerns (for example "sorted mHDX-MS ΔG, Dataset_3 row 214", not
-  "the landscape").
+  methods a sentence concerns (for example "APO vs TMP differential classes, ecDHFR
+  HXMS files", not "the results").
 - **Describe, do not decorate.** Replace conversational phrases, metaphors, slogans and
   editorial commentary with specific descriptions. Substituting more formal vocabulary is
   not enough.
@@ -87,19 +88,15 @@ Use these terms consistently in code, records and site text.
 
 | Use | Not | Meaning |
 | --- | --- | --- |
-| measurement | replicate | A Dataset_4 row. Rows of one construct can differ in temperature or pH, so they are not assumed to be replicates. |
 | replicate | | Only for repeated measurements under the same conditions (e.g. same-day HDX-MS runs, `REP` in HXMS). |
-| mean of N measurements | mean of replicates | A Dataset_4 per-construct mean; list the rows it averages (`mean_of_rows`). |
-| mixed | (a single value) | A condition of a mean whose measurements differ in that condition. |
 | not reported | 0, blank | A condition or value the source does not give. |
 | no value reported | not measured | A missing per-residue value (the source does not say why). |
 | raw input not found | blocked | Regeneration from raw data is not possible because an input has no known location. |
 | copied | | A value read verbatim from an archived file. |
 | computed here | derived, calculated | A value produced by this repository's code, with a code location and parameters. |
 | mapping to structural models | agreement | L3: projecting values onto a structure with a recorded residue mapping. |
-| cross-method comparison (exploratory) | agreement, validation | Comparison of mHDX-MS and HDX-NMR ΔG, matched by rank, not by residue. |
 | reference structure | true structure, ground truth | A deposited model used for comparison and residue numbering. |
-| ΔG (HDX-NMR), sorted site ΔG (mHDX-MS) | energy landscape (as a measured quantity) | Whether ΔG is an unfolding or a local opening free energy is unresolved; do not assert either. |
+| ΔG, with its method and source | energy landscape (as a measured quantity) | Do not assert whether a ΔG is a global unfolding or a local opening free energy unless the source defines it. |
 | more rigid / more flexible / no observable difference | protected, stabilized | Differential classes from the hybrid test; they depend on the declared parameters. |
 
 ### Code and repository requirements
@@ -132,58 +129,52 @@ Use these terms consistently in code, records and site text.
   zip of Weber et al. 2026 (doi:10.1093/bioinformatics/btag113) must be saved by hand as
   `~/Downloads/btag113_supplementary_data.zip`; `fetch.py` copies it and checks SHA-256
   `77b3d872…3fd4`.
-- `data/raw/` holds about 300 MB (Dataset_3 is 286 MB). It is git-ignored.
+- `data/raw/` holds about 18 MB (mostly the HXMS supplement zip). It is git-ignored.
 
 ## Layout
 
 ```
 pipeline/fetch.py            sources -> data/raw/, sources.lock.json
-pipeline/build_entries.py    intact-protein entries (mHDX-MS, HDX-NMR, structures), views, index
-pipeline/build_peptide.py    peptide-level entry (ecDHFR) and its view; called from build_entries.main()
+pipeline/build_entries.py    entry list, schema validation, shared helpers; calls build_peptide
+pipeline/build_peptide.py    peptide-level entry (ecDHFR), its structure entries and view
 schema/hdx_entry.v0.2.json   entry record schema
 schema/hdx_view.v0.2.json    cross-entry view schema (derived display records)
 web/src/pages/               Browse.tsx (entry list), Entry.tsx (tabs)
-web/src/hdx/                 Explorer.tsx (intact view), PeptideExplorer.tsx (peptide view),
-                             plots.tsx, Provenance.tsx, provenance-card.tsx, model.ts, types.ts
+web/src/hdx/                 PeptideExplorer.tsx (Explore tab), card.tsx, Plot.tsx, Provenance.tsx,
+                             provenance-card.tsx, colors.ts, value-theme.ts, types.ts
 web/src/vendor/hetstar/      Mol* wrapper and sequence lanes copied from hetstar
 web/public/                  generated data served by the site (committed)
 ```
 
 ## What was built
 
-### Entries (19 total)
+### Entries (4 total)
 
 | Group | Entries | Source |
 | --- | --- | --- |
-| 5 de novo miniproteins (EEHEE_rd4_0642, EEHEE_rd4_0871, HHH_rd4_0518, HEEH_rd4_0097, EHEE_rd2_0005) | per protein: mHDX-MS, HDX-NMR, reference structure (8SKE, 8SKD, 8SKX, 5UYO, 8SHM) | Ferrari et al. 2026; Zenodo 14983481 (Dataset_3, Dataset_4); PRIDE PXD061702 |
 | ecDHFR (apo, methotrexate, trimethoprim) | 1 peptide-level HDX-MS entry; 3 structures (5DFR, 1RG7, 6XG5) | Lu et al. 2026; PRIDE PXD057539; HXMS supplement of Weber et al. 2026 |
+
+The five Ferrari et al. 2026 miniproteins (mHDX-MS, HDX-NMR and NMR reference structures)
+were removed on 2026-10-22. They remain in the git history up to commit `743422c`.
 
 ### Pipeline
 
-- Intact-protein data: Dataset_3 streamed with `ijson` (only listed proteins kept);
-  Dataset_4 per-residue values mapped to PDB numbering by exact sequence containment;
-  per-construct means matched to the rows they average by recomputation; merged pH 6 +
-  pH 9 mHDX series kept as separate series; raw mzML files cited per file from the PRIDE
-  listing (`mutants04` assumed to be PRIDE `mut04`, flagged as inferred).
 - Peptide-level data: HXMS parsed from the nested zip; charge states merged
   (intensity-weighted); times grouped within 15%; FD-normalized correction; replicate SD;
   hybrid test (Welch p < 0.01 and |ΔD| above a pooled-SD global limit, same-day replicates
   only); peptide classes; residue projection; alignment to each structure with mismatches
   recorded. All parameters are in `PARAMS` in `build_peptide.py` and stored in the records.
-- Cross-entry views group entries by sequence (`views/view_<pdb>.json`,
-  `views/view_ecdhfr.json`).
+- The cross-entry view groups entries whose sequences align to the HDX construct
+  (`views/view_ecdhfr.json`).
 
 ### Site
 
-- Front page: list of 11 HDX entries.
+- Front page: list of HDX entries (1).
 - Entry page tabs: Explore (cross-entry view), Overview (in order: record, metrics and
   schema extensions; Provenance section with the run graph and artifacts; polymer
   entities; samples; "where each value comes from"), Models, Downloads. `#/entry/<id>/provenance` opens the Overview
   tab at the Provenance section.
-- Intact Explore: Mol* structure colored by ΔG, log protection factor, predicted
-  deuteration at t, or secondary structure; ΔG threshold; sequence lanes; sorted-ΔG,
-  uptake, isotope, chiclet, butterfly and ΔΔG plots.
-- Peptide Explore: structure colored by differential class, ΔD per amide, or coverage;
+- Explore: structure colored by differential class, ΔD per amide, or coverage;
   structure selector; peptide map, uptake (corrected toggle), Woods, volcano, ΔD chiclet,
   reproducibility; identification panel.
 - Provenance cards on every source line: files, checksums, run chain, operation, `jq`
@@ -197,32 +188,23 @@ Prioritized. Items marked (decision) need the owner or the Dynamic PDB team.
    files and drop the manual-download step.
 2. **Add FEATHER ΔGop as a peer L2 model** for ecDHFR (authors' residue-level analysis;
    *Nat. Chem. Biol.* Source Data, apo states). Not retrieved yet.
-3. **Surface intact-protein identification and envelope evidence** already in Dataset_3:
-   retention time, `idotp` per charge, `PO_total_score`, `group`, EX1 flags. Check whether
-   `mhdx_pipeline`'s `config.yaml` holds the thresholds and link it as run parameters.
-4. **Register the Dataset_4 net-charge correction** as an L1d run
-   (`free_energy_no_nc_correction` → `free_energy_nc_corrected`) with a toggle, as done
-   for the peptide-level back-exchange correction.
-5. **Mutants** EEHEE_rd4_0871_K31L_E36V and HHH_rd4_0518_R35D_G45L (HDX-NMR, and mHDX-MS
-   rows in Dataset_3): polymer entities with `mutations[]`. Mutation numbering is open in
-   Dynamic PDB v0.2.0 (decision).
-6. **Raw-file checksums.** PRIDE lists none; computing them means downloading 1 to 27 GB
+3. **Envelope viewer** for peptide-level data (HXMS envelopes per peptide, time, replicate).
+4. **Reproducible user filters**: record a reader's thresholds as a run so a shared link
+   reproduces the view.
+5. **Merge** `feature/eehee-prototype` into `main` after review.
+6. **Raw-file checksums.** PRIDE lists none; computing them means downloading up to 27 GB
    per file. Decide whether to compute, or record PRIDE accessions as file identity
    (decision).
-7. **Envelope viewer** for peptide-level data (HXMS envelopes per peptide, time, replicate).
-8. **Reproducible user filters**: record a reader's thresholds as a run so a shared link
-   reproduces the view.
-9. **Merge** `feature/eehee-prototype` into `main` after review.
-10. **Dynamic PDB open decisions** (also in README): L2 interpretations without
-    coordinates; HDX metric and residue keys; HDX experimental block; one level for
-    multi-level files; declaring sources with no URI; cross-entry relations.
+7. **Schema cleanup (decision).** The v0.2 and v0.3 schemas still allow intact-protein
+   values (`method` enum `HDX-NMR`/`mHDX-MS`, view `kind: "intact"`, Dataset_4 sample
+   fields). Removing them is a removal, so it needs a major version bump under the rule
+   above.
+8. **Dynamic PDB open decisions** (also in README): L2 interpretations without
+   coordinates; HDX metric and residue keys; HDX experimental block; one level for
+   multi-level files; declaring sources with no URI; cross-entry relations.
 
 ### Open data questions
 
-- How were Dataset_4 measurements at different temperatures or pH combined into one ΔG mean?
-- Where are the HDX-NMR spectra deposited, if anywhere?
-- 8SKE `_exptl.method` says solid-state NMR; its experiment details describe solution NMR.
-- PRIDE lists PXD061702 as "Top-down proteomics".
 - 6XG5 differs from the ecDHFR HDX construct at residue 37 (N vs D) and contains NADPH.
 
 ## Testing
@@ -245,5 +227,5 @@ Prioritized. Items marked (decision) need the owner or the Dynamic PDB team.
 - `echo =====` fails in zsh (`=` expansion); use `echo ---`.
 - Newer Chromium returns a Promise from `window.scrollTo`; React effects must use braces
   so they return nothing (an implicit return crashed the app as "destroy is not a function").
-- Entry IDs are derived from keys such as `"<name>|<method>"`; changing a key changes the
-  ID and breaks links.
+- Entry IDs are derived from keys such as `"ecDHFR|HDX-MS peptide"`; changing a key changes
+  the ID and breaks links.

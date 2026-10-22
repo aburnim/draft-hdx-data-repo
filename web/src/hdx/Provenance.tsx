@@ -21,7 +21,7 @@ type Node =
   | { kind: "run"; id: string; x: number; y: number; r: Run };
 
 export default function Provenance({ entry, highlight }: { entry: View; highlight?: string }) {
-  const [picked, setPicked] = useState<string>("m_mhdx");
+  const [picked, setPicked] = useState<string>(() => entry.artifacts.find((a) => a.kind === "model")?.id ?? "");
 
   const { nodes, edges, height } = useMemo(() => {
     const levelOf = new Map(entry.artifacts.map((a) => [a.id, LEVELS.indexOf(a.level)]));
@@ -33,8 +33,8 @@ export default function Provenance({ entry, highlight }: { entry: View; highligh
     const maxRows = Math.max(...[...byCol.values()].map((v) => v.length));
     const nodes: Node[] = [];
     const pos = new Map<string, { x: number; y: number; w: number; h: number }>();
-    // Top-aligned, so artifacts listed in the same order share a row (mHDX first, then
-    // NMR, then structure) and each method's chain runs straight across.
+    // Top-aligned, so artifacts listed in the same order share a row and each chain
+    // runs straight across.
     for (const [col, as] of byCol) {
       as.forEach((a, i) => {
         const p = { x: COL[col], y: TOP + i * ROW, w: A_W, h: A_H };

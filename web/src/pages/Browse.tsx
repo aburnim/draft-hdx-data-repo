@@ -1,4 +1,4 @@
-import { fmt, useJSON } from "../hdx/data";
+import { useJSON } from "../hdx/data";
 import type { EntryList } from "../hdx/types";
 
 // The front page: every HDX entry, one row each, linking to its entry page.
@@ -21,7 +21,6 @@ export default function Browse() {
                 <th className="px-4 py-2 font-semibold">Protein</th>
                 <th className="px-4 py-2 font-semibold">Method</th>
                 <th className="px-4 py-2 font-semibold">Samples</th>
-                <th className="px-4 py-2 text-right font-semibold">ΔG max</th>
                 <th className="px-4 py-2 font-semibold">Reference structure</th>
                 <th className="px-4 py-2 font-semibold">Raw data</th>
               </tr>
@@ -43,7 +42,6 @@ export default function Browse() {
                   <td className="px-4 py-3 text-ink-secondary">
                     {e.samples} · {e.constructs.join(", ")}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">{fmt(e.dg_max)}</td>
                   <td className="px-4 py-3 font-mono text-[12px]">
                     {e.pdb ? (
                       <a className="text-accent underline" href={`#/entry/${e.structure_entry}`} onClick={(ev) => ev.stopPropagation()}>

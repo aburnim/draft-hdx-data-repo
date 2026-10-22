@@ -1,0 +1,51 @@
+---
+title: Prism HDX registry · data organization (draft for discussion, 2026-10-21)
+config:
+  layout: elk
+---
+flowchart TD
+    subgraph entry["1 · Entry: one experimental context"]
+        direction LR
+        method["One method per entry<br/>peptide-level HDX-MS"]
+        constructs["Polymer entities<br/>constructs and mutations"]
+        samples["Samples<br/>states, conditions, replicates"]
+    end
+
+    subgraph levels["2 · Data levels within an entry"]
+        l0["L0 · Raw instrument data<br/>cited in a public archive, not copied"]
+        l1["L1 · Measurements<br/>L1a peptide identification<br/>L1b uptake · L1c controls<br/>L1d calibrated values<br/>technical reproducibility"]
+        l2["L2 · Interpretations<br/>validity filters, statistical tests,<br/>differential classes, residue projection, ΔG"]
+        l3["L3 · Mapping to structural models<br/>values placed on a reference structure<br/>with a recorded residue mapping"]
+    end
+
+    subgraph refEntry["Supporting entry"]
+        ref["Reference structure<br/>used for comparison and residue numbering<br/>not treated as ground truth"]
+    end
+
+    subgraph prov["3 · Provenance for every displayed value"]
+        record["Derivation record<br/>input files, fields and rows · run chain<br/>operation · code location · check command"]
+        tier["Tier<br/>copied from an archived file,<br/>or computed here with parameters"]
+        rawStatus["Raw-data status<br/>raw input located, or raw input not found"]
+    end
+
+    entry --> levels
+    l0 --> l1
+    l1 --> l2
+    l2 --> l3
+    ref --> l3
+
+    levels -.->|"each value at each level"| prov
+    record --> tier
+    record --> rawStatus
+
+    classDef ent fill:#F3F0FA,stroke:#6E5A9E
+    classDef level fill:#EAF5EE,stroke:#3E7D57
+    classDef check fill:#FDF3E7,stroke:#B5742E
+    class method,constructs,samples ent
+    class l0,l1,l2,l3,ref level
+    class record,tier,rawStatus check
+    style ref stroke-dasharray:4 3
+    style entry fill:#FAFBFC,stroke:#C9D1DC
+    style levels fill:#FAFBFC,stroke:#C9D1DC
+    style prov fill:#FAFBFC,stroke:#C9D1DC
+    style refEntry fill:#FAFBFC,stroke:#C9D1DC,stroke-dasharray:4 3

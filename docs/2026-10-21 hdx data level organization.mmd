@@ -1,0 +1,51 @@
+flowchart TD
+    subgraph levelZero["L0: Raw instrument data"]
+        undeuteratedRaw["Undeuterated MS/MS data"]
+        labeledRaw["Labeling and control MS data"]
+    end
+
+    subgraph levelOne["L1: Processed measurements and evidence"]
+        peptideMap["L1a: Peptide map, identification evidence and curation"]
+        envelopes["L1b: Evaluated per-charge envelopes, flags and review records"]
+        uptake["L1b: Uncorrected uptake by state, time, replicate and peptide"]
+        controls["L1c: FD controls or alternative estimates and reporter metadata"]
+        calibrated["L1d: Calibrated uptake in separate correction branches"]
+        reproducibility["L1: Technical reproducibility, replicate counts and SD"]
+    end
+
+    subgraph levelTwo["L2: Validity and interpretation"]
+        validity["Validity decisions with criteria and reasons"]
+        accepted["Accepted measurements"]
+        excluded["Excluded or untested measurements retained"]
+        differential["Differential tests and peptide classes"]
+        projection["Residue projection from overlapping peptides"]
+    end
+
+    subgraph levelThree["L3: Mapping to structural models"]
+        reference["Reference structure and residue numbering"]
+        mapped["Mapped values, classes, mismatches and unmapped positions"]
+    end
+
+    undeuteratedRaw -->|"Identification run"| peptideMap
+    peptideMap --> envelopes
+    labeledRaw -->|"Extraction and evaluation"| envelopes
+    envelopes -->|"Merge charge states"| uptake
+
+    labeledRaw -.->|"Control processing"| controls
+    uptake -->|"Correction run with parameters"| calibrated
+    controls -.->|"Control inputs"| calibrated
+
+    uptake --> reproducibility
+    calibrated -.-> reproducibility
+
+    uptake -->|"Select uncorrected inputs"| validity
+    calibrated -->|"Or select calibrated inputs"| validity
+    reproducibility -.->|"Inform criteria"| validity
+
+    validity --> accepted
+    validity --> excluded
+    accepted --> differential
+    differential --> projection
+
+    projection --> mapped
+    reference -->|"Sequence alignment"| mapped

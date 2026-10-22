@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph levelZero["L0: Instrument data"]
+        peptideRaw["Peptide HDX-MS: Bruker data in PRIDE"]
+    end
+
+    subgraph levelOne["L1: Processed measurements and controls"]
+        peptideIds["L1a: Peptide lists and identification evidence"]
+        hxms["L1b/c: HXMS envelopes, uptake and controls"]
+        uptake["L1b: Uncorrected uptake, charges merged"]
+        controls["L1c: FD controls or alternative method"]
+        calibrated["L1d: Separate FD-normalized uptake"]
+        reproducibility["L1 evaluation: Replicate uptake SD"]
+    end
+
+    subgraph levelTwo["L2: Fits and interpretations"]
+        differential["Exploratory differential tests and peptide classes"]
+        projection["Exploratory residue projection"]
+        reference["Deposited coordinate models"]
+    end
+
+    subgraph levelThree["L3: Structural mapping"]
+        mapping["Mapping to structural models"]
+    end
+
+    peptideRaw -->|"Identification"| peptideIds
+    peptideRaw -->|"Upstream extraction"| hxms
+    peptideIds --> hxms
+    hxms -->|"Merge charges"| uptake
+    hxms -.->|"Control records"| controls
+    uptake -->|"Correction run"| calibrated
+    controls -.->|"Normalization inputs"| calibrated
+    uptake --> reproducibility
+
+    uptake -->|"Uncorrected inputs only"| differential
+    reproducibility --> differential
+    differential --> projection
+
+    projection --> mapping
+    reference -->|"Reference numbering"| mapping

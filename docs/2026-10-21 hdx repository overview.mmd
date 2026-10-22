@@ -1,0 +1,79 @@
+flowchart LR
+    subgraph sources["1 · External sources"]
+        rcsb["RCSB PDB<br/>3 reference structures"]
+        hxmsZip["HXMS supplement<br/>Weber et al. 2026<br/>manual download<br/>license unverified, not hosted"]
+        pride["PRIDE PXD057539<br/>raw MS files"]
+    end
+
+    subgraph pipeline["2 · Pipeline (pipeline/)"]
+        fetch["fetch.py"]
+        raw[("data/raw/<br/>~18 MB, git-ignored")]
+        lock["sources.lock.json<br/>URL, SHA-256, license"]
+        build["build_entries.py<br/>+ build_peptide.py"]
+        schema["schema/<br/>hdx_entry, hdx_view v0.2"]
+        drafts["docs/ + schema v0.3<br/>dictionary v3, drafts<br/>not yet in the build"]
+    end
+
+    subgraph published["3 · Published records (web/public/)"]
+        index["index.json<br/>1 HDX entry"]
+        entries["entries/ · 4 entries<br/>1 peptide-level HDX-MS · 3 structures"]
+        views["views/ · 1 cross-entry view<br/>HDX entry and its structures"]
+        cif["structures/<br/>3 mmCIF files"]
+    end
+
+    subgraph record["4 · Inside one entry"]
+        entities["polymer_entities<br/>constructs"]
+        samples["hdx.samples<br/>states, conditions, replicates"]
+        artifacts["artifacts<br/>files, L0 to L3"]
+        runs["runs<br/>processing steps"]
+        models["models<br/>residue values, metrics"]
+    end
+
+    subgraph site["5 · Site (web/src/)"]
+        browse["Browse #/<br/>HDX entries only"]
+        entryPage["Entry tabs<br/>Explore · Overview · Models · Downloads"]
+        provenance["Provenance cards<br/>files, run chain, jq check"]
+    end
+
+    rcsb --> fetch
+    hxmsZip --> fetch
+    fetch --> raw
+    fetch --> lock
+    raw --> build
+    schema -->|"validates every record"| build
+    pride -.->|"cited per file, not copied"| build
+
+    build --> index
+    build --> entries
+    build --> views
+    build --> cif
+
+    entries --- record
+    runs -->|"input artifacts"| artifacts
+    runs -->|"produce"| models
+    samples --> entities
+
+    index --> browse
+    entries --> entryPage
+    views --> entryPage
+    cif --> entryPage
+    entryPage -->|"derivations stored in views"| provenance
+
+    drafts -.->|"proposed"| schema
+
+    classDef external fill:#EEF2F7,stroke:#5B6B82
+    classDef work fill:#F3F0FA,stroke:#6E5A9E
+    classDef output fill:#EAF5EE,stroke:#3E7D57
+    classDef ui fill:#FDF3E7,stroke:#B5742E
+    classDef draft fill:#FFFFFF,stroke:#999999,stroke-dasharray:4 3
+    class rcsb,hxmsZip,pride external
+    class fetch,raw,lock,build,schema work
+    class index,entries,views,cif,entities,samples,artifacts,runs,models output
+    class browse,entryPage,provenance ui
+    class drafts draft
+    style hxmsZip fill:#FFF1D6,stroke:#B98736
+    style sources fill:#FAFBFC,stroke:#C9D1DC
+    style pipeline fill:#FAFBFC,stroke:#C9D1DC
+    style published fill:#FAFBFC,stroke:#C9D1DC
+    style record fill:#FAFBFC,stroke:#C9D1DC
+    style site fill:#FAFBFC,stroke:#C9D1DC

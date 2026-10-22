@@ -1,0 +1,652 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prism.astera.org/schema/hdx_view/0.3.0",
+  "title": "HDX cross-entry view (draft 0.3.0)",
+  "description": "Derived display record. Adds a canonical structured peptide_workflow mirrored from its owning entry. Historical display payloads remain for renderer compatibility; they are not evidence of workflow completeness. This draft is not yet emitted by the pipeline.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "members",
+    "chain",
+    "external_refs",
+    "artifacts",
+    "runs",
+    "derivations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.3.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^view_[0-9a-z]+$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "protein": {
+      "type": "object",
+      "required": [
+        "name",
+        "origin"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "de novo design",
+            "design variant",
+            "natural domain",
+            "PDB-derived domain",
+            "natural protein"
+          ]
+        },
+        "topology": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "uniprot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "chain": {
+      "type": "object",
+      "required": [
+        "id",
+        "positions"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "entity_description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "positions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "pos",
+              "compId",
+              "letter",
+              "seq"
+            ],
+            "properties": {
+              "pos": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "compId": {
+                "type": "string"
+              },
+              "letter": {
+                "type": "string",
+                "maxLength": 1
+              },
+              "seq": {
+                "type": "integer",
+                "description": "auth_seq_id"
+              }
+            }
+          }
+        },
+        "secondary": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "start",
+              "end",
+              "kind"
+            ],
+            "properties": {
+              "start": {
+                "type": "integer"
+              },
+              "end": {
+                "type": "integer"
+              },
+              "kind": {
+                "enum": [
+                  "helix",
+                  "strand"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "method"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "HDX-NMR",
+              "mHDX-MS"
+            ]
+          },
+          "construct": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "replicate": {
+            "type": [
+              "integer",
+              "string",
+              "null"
+            ]
+          },
+          "pH": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "temp_K": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "buffer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "external_refs": {
+      "type": "object",
+      "properties": {
+        "pdb": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pride": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^PXD[0-9]{6}$"
+        },
+        "zenodo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "doi": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "github": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "level",
+          "title",
+          "format",
+          "uri",
+          "license",
+          "held"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "short": {
+            "type": "string",
+            "description": "short display name"
+          },
+          "level": {
+            "enum": [
+              "L0",
+              "L1",
+              "L2",
+              "L3"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "uri": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null when the source exists but its location is not known"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "the fields of a multi-level file this artifact covers"
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "license": {
+            "type": "string"
+          },
+          "held": {
+            "type": "boolean",
+            "description": "true when this registry stores the bytes; false when it only references them"
+          },
+          "kind": {
+            "enum": [
+              "artifact",
+              "model"
+            ]
+          },
+          "entry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "owning entry; null for view-level records"
+          },
+          "stored_in": {
+            "type": "string",
+            "description": "for a model node: the artifact holding its values"
+          }
+        }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "software",
+          "inputs",
+          "outputs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "software": {
+            "type": "string"
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parsed_from": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tracks": {
+      "type": "object",
+      "description": "Per-residue values in hetstar's Track JSON shape, keyed on auth numbering.",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "metricId",
+          "level",
+          "domain",
+          "keys",
+          "values"
+        ],
+        "properties": {
+          "metricId": {
+            "type": "string"
+          },
+          "level": {
+            "const": "residue"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "keys": {
+            "type": "array"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "derivations": {
+      "type": "array",
+      "description": "Where each displayed value or plot comes from, and how to check it.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "tier",
+          "entry",
+          "inputs",
+          "runs",
+          "raw"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "copied",
+              "computed"
+            ],
+            "description": "copied: verbatim from an archived file; computed: derived by this repository from archived files"
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "artifact",
+                "fields",
+                "rows"
+              ],
+              "properties": {
+                "artifact": {
+                  "type": "string"
+                },
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rows": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "runs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "upstream run chain, raw data first"
+          },
+          "raw": {
+            "enum": [
+              "pipelines",
+              "blocked",
+              "deposited"
+            ],
+            "description": "regeneration from raw data: needs the upstream pipelines, is blocked because a raw input was not found (displayed as \"raw input not found\"), or does not apply (deposited file)"
+          },
+          "operation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "check": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "owning entry; null for cross-entry values"
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "level",
+          "interpretation"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "level": {
+            "enum": [
+              "L1",
+              "L2",
+              "L3"
+            ],
+            "description": "L1 for technical reproducibility of processed data"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "source_field": {
+            "type": "string"
+          },
+          "computed_here": {
+            "type": "boolean"
+          },
+          "entry": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "grouping": {
+      "type": "string"
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "method"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^hdx_[0-9a-z]{8}$"
+          },
+          "kind": {
+            "enum": [
+              "hdx",
+              "structure"
+            ]
+          },
+          "method": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "kind": {
+      "enum": [
+        "intact",
+        "peptide"
+      ],
+      "description": "intact-protein mHDX-MS view, or peptide-level HDX-MS view"
+    },
+    "structures": {
+      "description": "peptide-level view field (kind 'peptide'); historical renderer payload. Use peptide_workflow for canonical workflow validation."
+    },
+    "time_bins": {
+      "description": "peptide-level view field (kind 'peptide'); historical renderer payload. Use peptide_workflow for canonical workflow validation."
+    },
+    "peptides": {
+      "description": "peptide-level view field (kind 'peptide'); historical renderer payload. Use peptide_workflow for canonical workflow validation."
+    },
+    "uptake": {
+      "description": "peptide-level view field (kind 'peptide'); historical renderer payload. Use peptide_workflow for canonical workflow validation."
+    },
+    "fd": {
+      "description": "peptide-level view field (kind 'peptide'); historical renderer payload. Use peptide_workflow for canonical workflow validation."
+    },
+    "reproducibility": {
+      "description": "peptide-level view field (kind 'peptide'); historical renderer payload. Use peptide_workflow for canonical workflow validation."
+    },
+    "comparisons": {
+      "description": "peptide-level view field (kind 'peptide'); historical renderer payload. Use peptide_workflow for canonical workflow validation."
+    },
+    "states": {
+      "description": "peptide-level view field (kind 'peptide'); historical renderer payload. Use peptide_workflow for canonical workflow validation."
+    },
+    "peptide_workflow": {
+      "$ref": "https://prism.astera.org/schema/hdx_entry/0.3.0#/$defs/peptide_workflow"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "const": "peptide"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "peptide_workflow"
+        ]
+      }
+    }
+  ]
+}

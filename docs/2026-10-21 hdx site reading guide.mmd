@@ -1,0 +1,43 @@
+flowchart TD
+    list["HDX entry list<br/>1 entry, one per experimental context"]
+
+    subgraph proteins["1 · Protein"]
+        dhfr["<i>E. coli</i> DHFR<br/>apo, methotrexate, trimethoprim<br/>Lu et al. 2026"]
+    end
+
+    subgraph methods["2 · Method (one entry)"]
+        pep["Peptide-level HDX-MS<br/>uptake per peptide, differences between states<br/>raw files: PRIDE PXD057539"]
+    end
+
+    subgraph levels["3 · Read the entry, level by level"]
+        l1["Measurements (L1)<br/>peptide identification, uptake,<br/>controls, replicate spread"]
+        l2["Interpretations (L2)<br/>differential classes, residue projection<br/>(exploratory, computed here)"]
+        l3["Mapping to structural models (L3)<br/>values drawn on a reference structure"]
+    end
+
+    ref["Reference structure (PDB)<br/>used for comparison and residue numbering<br/>not treated as ground truth"]
+
+    prov["4 · Check any value<br/>provenance card: source file, rows, operation<br/>copied, or computed here with parameters<br/>exploratory analyses are labeled"]
+
+    list --> dhfr
+    dhfr --> pep
+
+    pep --> l1
+    l1 --> l2
+    l2 --> l3
+    ref --> l3
+
+    l3 -.->|"every value and plot"| prov
+
+    classDef start fill:#EEF2F7,stroke:#5B6B82
+    classDef pick fill:#F3F0FA,stroke:#6E5A9E
+    classDef level fill:#EAF5EE,stroke:#3E7D57
+    classDef check fill:#FDF3E7,stroke:#B5742E
+    class list start
+    class dhfr,pep pick
+    class l1,l2,l3,ref level
+    class prov check
+    style ref stroke-dasharray:4 3
+    style proteins fill:#FAFBFC,stroke:#C9D1DC
+    style methods fill:#FAFBFC,stroke:#C9D1DC
+    style levels fill:#FAFBFC,stroke:#C9D1DC

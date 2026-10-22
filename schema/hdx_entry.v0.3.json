@@ -1,0 +1,4628 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prism.astera.org/schema/hdx_entry/0.3.0",
+  "title": "HDX entry (draft 0.3.0)",
+  "description": "One experimental context and method. Adds a structured peptide workflow with explicit reporting status for identification, envelope evaluation, controls, calibration, reproducibility, validity, differential interpretation and mapping. Missing numeric observations are null; observed zero is valid. This draft is not yet emitted by the pipeline.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "state",
+    "revision",
+    "title",
+    "method",
+    "polymer_entities",
+    "artifacts",
+    "runs",
+    "models",
+    "view",
+    "extensions"
+  ],
+  "$defs": {
+    "selector": {
+      "type": "object",
+      "description": "Extension: the fields and rows of a shared multi-row file that a link refers to.",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "required": [
+        "key",
+        "value",
+        "software_name"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "software_name": {
+          "type": "string"
+        },
+        "software_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_field": {
+          "type": "string"
+        }
+      }
+    },
+    "artifact_ref": {
+      "type": "object",
+      "required": [
+        "artifact"
+      ],
+      "properties": {
+        "artifact": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "$ref": "#/$defs/selector"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Exact artifact and optional field/row selector. IDs resolve within the owning entry. A reference does not establish accessibility or byte integrity."
+    },
+    "software": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "One actual tool and its role. Version may be null when not recorded. A repository commit must not be assigned to other tools in the same workflow."
+    },
+    "criterion": {
+      "type": "object",
+      "required": [
+        "name",
+        "operator",
+        "value",
+        "unit",
+        "scope",
+        "method",
+        "source"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operator": {
+          "enum": [
+            "<",
+            "<=",
+            "=",
+            ">=",
+            ">",
+            "in",
+            "custom",
+            "not recorded"
+          ]
+        },
+        "value": {
+          "type": [
+            "number",
+            "string",
+            "array",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/artifact_ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Declared acceptance or statistical rule, not a schema-selected scientific threshold. Null means the threshold was not recorded."
+    },
+    "manual_review": {
+      "type": "object",
+      "required": [
+        "status",
+        "method",
+        "reviewer",
+        "reviewed_at",
+        "record"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "performed",
+            "not performed",
+            "not recorded"
+          ]
+        },
+        "method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "reviewer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "reviewed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "record": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/artifact_ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Curation or envelope review history. A CLEANED filename alone does not establish the reviewer, criteria or individual decisions."
+    },
+    "peptide_row": {
+      "type": "object",
+      "required": [
+        "id",
+        "polymer_entity",
+        "start",
+        "end",
+        "sequence",
+        "evidence",
+        "flags",
+        "decision",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "polymer_entity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sequence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "decision": {
+          "enum": [
+            "accepted",
+            "excluded",
+            "unresolved",
+            "not recorded"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1a map row in one-based inclusive construct numbering. Preserve excluded candidates. Evidence can select MS/MS scans, scores and source identification rows."
+    },
+    "envelope_row": {
+      "type": "object",
+      "required": [
+        "id",
+        "peptide",
+        "sample",
+        "state",
+        "replicate",
+        "time_s",
+        "control_type",
+        "charge",
+        "retention_time_s",
+        "spectrum",
+        "uptake_da",
+        "scores",
+        "flags",
+        "decision",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "peptide": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replicate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "time_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "control_type": {
+          "enum": [
+            "labeling",
+            "undeuterated",
+            "fully deuterated",
+            "internal reporter",
+            "other"
+          ]
+        },
+        "charge": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retention_time_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "spectrum": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "uptake_da": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "scores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "unit": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "decision": {
+          "enum": [
+            "accepted",
+            "excluded",
+            "unresolved",
+            "not recorded"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1b per-charge envelope evidence. Null time with explicit control_type replaces infinite time. Preserve rejected envelopes and their evidence."
+    },
+    "uptake_row": {
+      "type": "object",
+      "required": [
+        "id",
+        "peptide",
+        "sample",
+        "state",
+        "replicate",
+        "time_s",
+        "time_bin",
+        "charges",
+        "envelope_ids",
+        "uptake_da",
+        "value_status",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "peptide": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replicate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "time_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "time_bin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "charges": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 1
+        },
+        "envelope_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "uptake_da": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "value_status": {
+          "enum": [
+            "reported",
+            "no value reported",
+            "excluded"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1b charges-merged observation. State, actual time, replicate and peptide remain explicit. Null uptake is missing, never replaced by zero.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "value_status": {
+                "const": "reported"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "uptake_da": {
+                "type": "number"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "uptake_da": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "control_row": {
+      "type": "object",
+      "required": [
+        "id",
+        "peptide",
+        "sample",
+        "state",
+        "replicates",
+        "kind",
+        "uptake_da",
+        "uncertainty_da",
+        "evidence",
+        "flags"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "peptide": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replicates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "kind": {
+          "enum": [
+            "fully deuterated",
+            "estimated maximum",
+            "internal reporter",
+            "other"
+          ]
+        },
+        "uptake_da": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "uncertainty_da": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "calibrated_row": {
+      "type": "object",
+      "required": [
+        "id",
+        "input_observation",
+        "peptide",
+        "sample",
+        "state",
+        "replicate",
+        "time_s",
+        "value",
+        "unit",
+        "correction_run",
+        "control_ids",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_observation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "peptide": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replicate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "time_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correction_run": {
+          "type": "string",
+          "minLength": 1
+        },
+        "control_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "A separate L1d observation with explicit L1b parent. Unit and calibration scale must be stated."
+    },
+    "reproducibility_row": {
+      "type": "object",
+      "required": [
+        "peptide",
+        "sample",
+        "state",
+        "time_s",
+        "replicate_ids",
+        "n",
+        "mean",
+        "sd",
+        "unit",
+        "input_observations"
+      ],
+      "properties": {
+        "peptide": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "time_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "replicate_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 2
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "mean": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "sd": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_observations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1 technical reproducibility cell. Replicate counts must describe independent experimental units, not charge states."
+    },
+    "validity_row": {
+      "type": "object",
+      "required": [
+        "observation",
+        "decision",
+        "criteria",
+        "reason",
+        "flags"
+      ],
+      "properties": {
+        "observation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision": {
+          "enum": [
+            "accepted",
+            "excluded",
+            "not tested"
+          ]
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false,
+      "description": "L2 validity decision about an L1 observation. An accepted observation may still have no significant differential result."
+    },
+    "differential_row": {
+      "type": "object",
+      "required": [
+        "peptide",
+        "state_a",
+        "state_b",
+        "time_s",
+        "time_bin",
+        "delta",
+        "unit",
+        "n_a",
+        "n_b",
+        "p_value",
+        "significant",
+        "class",
+        "input_observations",
+        "reason"
+      ],
+      "properties": {
+        "peptide": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_a": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_b": {
+          "type": "string",
+          "minLength": 1
+        },
+        "time_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "time_bin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "delta": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "n_a": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "n_b": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "p_value": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "significant": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "class": {
+          "enum": [
+            "more rigid",
+            "more flexible",
+            "mixed",
+            "no observable difference",
+            "not tested"
+          ]
+        },
+        "input_observations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "projection_row": {
+      "type": "object",
+      "required": [
+        "polymer_entity",
+        "construct_position",
+        "class",
+        "value",
+        "unit",
+        "peptides",
+        "time_scope"
+      ],
+      "properties": {
+        "polymer_entity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "construct_position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "class": {
+          "enum": [
+            "more rigid",
+            "more flexible",
+            "mixed",
+            "no observable difference",
+            "not tested"
+          ]
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "peptides": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "time_scope": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "L2 projection from overlapping peptides. A numeric summary need not represent a single time or individual-amide measurement."
+    },
+    "mapping_row": {
+      "type": "object",
+      "required": [
+        "polymer_entity",
+        "construct_position",
+        "reference_entry",
+        "reference_model",
+        "label_asym_id",
+        "label_seq_id",
+        "auth_asym_id",
+        "auth_seq_id",
+        "insertion_code",
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "polymer_entity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "construct_position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reference_entry": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label_asym_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label_seq_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "auth_asym_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "auth_seq_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "insertion_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "mismatch",
+            "unmapped"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "L3 mapping to a structural model. Mapping establishes neither identity of experimental conditions nor structural validation."
+    },
+    "peptide_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "id",
+            "polymer_entity",
+            "start",
+            "end",
+            "sequence",
+            "evidence",
+            "flags",
+            "decision",
+            "reason"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "polymer_entity": {
+              "type": "string",
+              "minLength": 1
+            },
+            "start": {
+              "type": "string",
+              "minLength": 1
+            },
+            "end": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sequence": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence": {
+              "type": "string",
+              "minLength": 1
+            },
+            "flags": {
+              "type": "string",
+              "minLength": 1
+            },
+            "decision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/peptide_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "envelope_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "id",
+            "peptide",
+            "sample",
+            "state",
+            "replicate",
+            "time_s",
+            "control_type",
+            "charge",
+            "retention_time_s",
+            "spectrum",
+            "uptake_da",
+            "scores",
+            "flags",
+            "decision",
+            "reason"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "peptide": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sample": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state": {
+              "type": "string",
+              "minLength": 1
+            },
+            "replicate": {
+              "type": "string",
+              "minLength": 1
+            },
+            "time_s": {
+              "type": "string",
+              "minLength": 1
+            },
+            "control_type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "charge": {
+              "type": "string",
+              "minLength": 1
+            },
+            "retention_time_s": {
+              "type": "string",
+              "minLength": 1
+            },
+            "spectrum": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uptake_da": {
+              "type": "string",
+              "minLength": 1
+            },
+            "scores": {
+              "type": "string",
+              "minLength": 1
+            },
+            "flags": {
+              "type": "string",
+              "minLength": 1
+            },
+            "decision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/envelope_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "uptake_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "id",
+            "peptide",
+            "sample",
+            "state",
+            "replicate",
+            "time_s",
+            "time_bin",
+            "charges",
+            "envelope_ids",
+            "uptake_da",
+            "value_status",
+            "reason"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "peptide": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sample": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state": {
+              "type": "string",
+              "minLength": 1
+            },
+            "replicate": {
+              "type": "string",
+              "minLength": 1
+            },
+            "time_s": {
+              "type": "string",
+              "minLength": 1
+            },
+            "time_bin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "charges": {
+              "type": "string",
+              "minLength": 1
+            },
+            "envelope_ids": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uptake_da": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value_status": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/uptake_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "control_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "id",
+            "peptide",
+            "sample",
+            "state",
+            "replicates",
+            "kind",
+            "uptake_da",
+            "uncertainty_da",
+            "evidence",
+            "flags"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "peptide": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sample": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state": {
+              "type": "string",
+              "minLength": 1
+            },
+            "replicates": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uptake_da": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uncertainty_da": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence": {
+              "type": "string",
+              "minLength": 1
+            },
+            "flags": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/control_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "calibrated_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "id",
+            "input_observation",
+            "peptide",
+            "sample",
+            "state",
+            "replicate",
+            "time_s",
+            "value",
+            "unit",
+            "correction_run",
+            "control_ids",
+            "reason"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "input_observation": {
+              "type": "string",
+              "minLength": 1
+            },
+            "peptide": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sample": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state": {
+              "type": "string",
+              "minLength": 1
+            },
+            "replicate": {
+              "type": "string",
+              "minLength": 1
+            },
+            "time_s": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            },
+            "unit": {
+              "type": "string",
+              "minLength": 1
+            },
+            "correction_run": {
+              "type": "string",
+              "minLength": 1
+            },
+            "control_ids": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/calibrated_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "reproducibility_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "peptide",
+            "sample",
+            "state",
+            "time_s",
+            "replicate_ids",
+            "n",
+            "mean",
+            "sd",
+            "unit",
+            "input_observations"
+          ],
+          "properties": {
+            "peptide": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sample": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state": {
+              "type": "string",
+              "minLength": 1
+            },
+            "time_s": {
+              "type": "string",
+              "minLength": 1
+            },
+            "replicate_ids": {
+              "type": "string",
+              "minLength": 1
+            },
+            "n": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mean": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sd": {
+              "type": "string",
+              "minLength": 1
+            },
+            "unit": {
+              "type": "string",
+              "minLength": 1
+            },
+            "input_observations": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reproducibility_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "validity_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "observation",
+            "decision",
+            "criteria",
+            "reason",
+            "flags"
+          ],
+          "properties": {
+            "observation": {
+              "type": "string",
+              "minLength": 1
+            },
+            "decision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "criteria": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "flags": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/validity_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "differential_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "peptide",
+            "state_a",
+            "state_b",
+            "time_s",
+            "time_bin",
+            "delta",
+            "unit",
+            "n_a",
+            "n_b",
+            "p_value",
+            "significant",
+            "class",
+            "input_observations",
+            "reason"
+          ],
+          "properties": {
+            "peptide": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state_a": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state_b": {
+              "type": "string",
+              "minLength": 1
+            },
+            "time_s": {
+              "type": "string",
+              "minLength": 1
+            },
+            "time_bin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "delta": {
+              "type": "string",
+              "minLength": 1
+            },
+            "unit": {
+              "type": "string",
+              "minLength": 1
+            },
+            "n_a": {
+              "type": "string",
+              "minLength": 1
+            },
+            "n_b": {
+              "type": "string",
+              "minLength": 1
+            },
+            "p_value": {
+              "type": "string",
+              "minLength": 1
+            },
+            "significant": {
+              "type": "string",
+              "minLength": 1
+            },
+            "class": {
+              "type": "string",
+              "minLength": 1
+            },
+            "input_observations": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/differential_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "projection_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "polymer_entity",
+            "construct_position",
+            "class",
+            "value",
+            "unit",
+            "peptides",
+            "time_scope"
+          ],
+          "properties": {
+            "polymer_entity": {
+              "type": "string",
+              "minLength": 1
+            },
+            "construct_position": {
+              "type": "string",
+              "minLength": 1
+            },
+            "class": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            },
+            "unit": {
+              "type": "string",
+              "minLength": 1
+            },
+            "peptides": {
+              "type": "string",
+              "minLength": 1
+            },
+            "time_scope": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/projection_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "mapping_table": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "columns": {
+          "type": "object",
+          "required": [
+            "polymer_entity",
+            "construct_position",
+            "reference_entry",
+            "reference_model",
+            "label_asym_id",
+            "label_seq_id",
+            "auth_asym_id",
+            "auth_seq_id",
+            "insertion_code",
+            "status",
+            "reason"
+          ],
+          "properties": {
+            "polymer_entity": {
+              "type": "string",
+              "minLength": 1
+            },
+            "construct_position": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reference_entry": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reference_model": {
+              "type": "string",
+              "minLength": 1
+            },
+            "label_asym_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "label_seq_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "auth_asym_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "auth_seq_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "insertion_code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mapping_row"
+          },
+          "minItems": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline records or an exact external table and a mapping of every canonical column to its source field. External bytes require separate validation against the row definition.",
+      "oneOf": [
+        {
+          "required": [
+            "source",
+            "columns"
+          ],
+          "not": {
+            "required": [
+              "records"
+            ]
+          }
+        },
+        {
+          "required": [
+            "records"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "columns"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "identification_details": {
+      "type": "object",
+      "required": [
+        "input_labeling",
+        "software",
+        "strategy",
+        "sequence_database",
+        "search_parameters",
+        "acceptance_criteria",
+        "acceptance_criteria_status",
+        "curation",
+        "peptide_map",
+        "notes"
+      ],
+      "properties": {
+        "input_labeling": {
+          "enum": [
+            "undeuterated",
+            "labeled",
+            "not recorded"
+          ]
+        },
+        "software": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/software"
+          },
+          "minItems": 1
+        },
+        "strategy": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "sequence_database": {
+          "type": "object",
+          "required": [
+            "name",
+            "version",
+            "source"
+          ],
+          "properties": {
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/artifact_ref"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "search_parameters": {
+          "type": "object"
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/criterion"
+          },
+          "minItems": 0
+        },
+        "acceptance_criteria_status": {
+          "enum": [
+            "recorded",
+            "not recorded"
+          ]
+        },
+        "curation": {
+          "$ref": "#/$defs/manual_review"
+        },
+        "peptide_map": {
+          "$ref": "#/$defs/peptide_table"
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "acceptance_criteria_status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "acceptance_criteria": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "acceptance_criteria": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "identification_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/identification_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1a identification of peptides before deuterated uptake analysis. Recorded means some evidence is available, not that all metadata are known. Search settings are distinct from acceptance thresholds.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/identification_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "envelope_processing_details": {
+      "type": "object",
+      "required": [
+        "software",
+        "extraction_method",
+        "uptake_method",
+        "parameters",
+        "quality_criteria",
+        "quality_criteria_status",
+        "manual_validation",
+        "envelopes",
+        "notes"
+      ],
+      "properties": {
+        "software": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/software"
+          },
+          "minItems": 1
+        },
+        "extraction_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "uptake_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "quality_criteria": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/criterion"
+          },
+          "minItems": 0
+        },
+        "quality_criteria_status": {
+          "enum": [
+            "recorded",
+            "not recorded"
+          ]
+        },
+        "manual_validation": {
+          "$ref": "#/$defs/manual_review"
+        },
+        "envelopes": {
+          "$ref": "#/$defs/envelope_table"
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "quality_criteria_status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "quality_criteria": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "quality_criteria": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "envelope_processing_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/envelope_processing_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1b upstream extraction and evaluation of deuterated envelopes, before charge merging. Record software for each actual role and decisions for rejected envelopes.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/envelope_processing_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "uptake_details": {
+      "type": "object",
+      "required": [
+        "identification_runs",
+        "envelope_processing_runs",
+        "charge_merge_method",
+        "time_grouping_method",
+        "parameters",
+        "measurements"
+      ],
+      "properties": {
+        "identification_runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "envelope_processing_runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "charge_merge_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "time_grouping_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "measurements": {
+          "$ref": "#/$defs/uptake_table"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uptake_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uptake_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1b uptake by state, time, replicate and peptide after charge merging; retain per-charge evidence upstream.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/uptake_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "controls_details": {
+      "type": "object",
+      "required": [
+        "method",
+        "preparation",
+        "d2o_fraction",
+        "saturation_evidence",
+        "baseline_method",
+        "pooling_method",
+        "alternative_estimation_method",
+        "measurements",
+        "limitations"
+      ],
+      "properties": {
+        "method": {
+          "enum": [
+            "fully deuterated",
+            "estimated maximum",
+            "internal reporters",
+            "combined",
+            "other"
+          ]
+        },
+        "preparation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "d2o_fraction": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "saturation_evidence": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "baseline_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "pooling_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "alternative_estimation_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "measurements": {
+          "$ref": "#/$defs/control_table"
+        },
+        "limitations": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "controls_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/controls_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1c optional maximally labeled controls, alternative maximum-uptake estimates or internal reporter metadata. If absent, explicitly report not performed or not recorded.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/controls_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "correction": {
+      "type": "object",
+      "required": [
+        "id",
+        "run",
+        "method",
+        "formula",
+        "parameters",
+        "input_measurements",
+        "uncorrected_measurements",
+        "controls",
+        "output_measurements",
+        "preserves_inputs",
+        "missing_control_policy",
+        "zero_time_policy",
+        "uncertainty_method",
+        "limitations",
+        "measurements"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run": {
+          "type": "string",
+          "minLength": 1
+        },
+        "method": {
+          "enum": [
+            "FD normalization",
+            "internal exchange reporter",
+            "other"
+          ]
+        },
+        "formula": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "input_measurements": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "uncorrected_measurements": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "controls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "output_measurements": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "preserves_inputs": {
+          "const": true
+        },
+        "missing_control_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "zero_time_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uncertainty_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "limitations": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "measurements": {
+          "$ref": "#/$defs/calibrated_table"
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1d separate correction execution. Distinct input/output selectors are required even within one file. Original uncorrected measurements remain addressable. Reanalysis uses retained inputs; an algebraic inverse is not promised.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "enum": [
+                  "FD normalization",
+                  "internal exchange reporter"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "controls": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "calibration_details": {
+      "type": "object",
+      "required": [
+        "corrections"
+      ],
+      "properties": {
+        "corrections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/correction"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "calibration_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/calibration_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1d calibration branches. Each correction has a separate run and parameters. Corrections never overwrite inputs.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/calibration_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "reproducibility_details": {
+      "type": "object",
+      "required": [
+        "level",
+        "replicate_type",
+        "experimental_unit",
+        "grouping",
+        "method",
+        "input_measurements",
+        "summary"
+      ],
+      "properties": {
+        "level": {
+          "const": "L1"
+        },
+        "replicate_type": {
+          "enum": [
+            "technical",
+            "biological",
+            "mixed",
+            "not recorded"
+          ]
+        },
+        "experimental_unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "grouping": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "input_measurements": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "summary": {
+          "$ref": "#/$defs/reproducibility_table"
+        }
+      },
+      "additionalProperties": false
+    },
+    "reproducibility_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/reproducibility_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L1 technical reproducibility of measurements, separate from L2 validity and differential inference.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/reproducibility_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "validity_details": {
+      "type": "object",
+      "required": [
+        "criteria",
+        "criteria_status",
+        "input_measurements",
+        "decisions",
+        "notes"
+      ],
+      "properties": {
+        "criteria": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/criterion"
+          },
+          "minItems": 0
+        },
+        "criteria_status": {
+          "enum": [
+            "recorded",
+            "not recorded"
+          ]
+        },
+        "input_measurements": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "decisions": {
+          "$ref": "#/$defs/validity_table"
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "criteria_status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "criteria": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "criteria": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "validity_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/validity_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L2 valid/excluded/not-tested decisions about L1 measurements. Significance is not a validity filter.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/validity_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "differential_details": {
+      "type": "object",
+      "required": [
+        "analysis_status",
+        "test",
+        "alpha",
+        "effect_threshold",
+        "replicate_selection",
+        "pairing",
+        "multiple_testing",
+        "sign_convention",
+        "classification_rule",
+        "validity_runs",
+        "input_measurements",
+        "results",
+        "limitations"
+      ],
+      "properties": {
+        "analysis_status": {
+          "enum": [
+            "exploratory",
+            "source reported"
+          ]
+        },
+        "test": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "alpha": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "effect_threshold": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "replicate_selection": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "pairing": {
+          "enum": [
+            "paired",
+            "unpaired",
+            "not recorded"
+          ]
+        },
+        "multiple_testing": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "sign_convention": {
+          "type": "string",
+          "minLength": 1
+        },
+        "classification_rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "validity_runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "input_measurements": {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        "results": {
+          "$ref": "#/$defs/differential_table"
+        },
+        "limitations": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "differential_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/differential_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L2 differential testing and peptide classification from stated input validity decisions and uptake version. Does not claim mechanical rigidity or validated error control.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/differential_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "projection_details": {
+      "type": "object",
+      "required": [
+        "analysis_status",
+        "method",
+        "exchangeable_span",
+        "overlap_rule",
+        "weighting",
+        "time_aggregation",
+        "differential_runs",
+        "results",
+        "limitations"
+      ],
+      "properties": {
+        "analysis_status": {
+          "enum": [
+            "exploratory",
+            "source reported"
+          ]
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exchangeable_span": {
+          "type": "string",
+          "minLength": 1
+        },
+        "overlap_rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "weighting": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "time_aggregation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "differential_runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "results": {
+          "$ref": "#/$defs/projection_table"
+        },
+        "limitations": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "projection_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/projection_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L2 residue projection from overlapping peptides in construct coordinates, independent of any structure. Resolution remains limited by peptides and the projection model.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/projection_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "structural_mapping_details": {
+      "type": "object",
+      "required": [
+        "level",
+        "purpose",
+        "method",
+        "projection_runs",
+        "mappings",
+        "limitations"
+      ],
+      "properties": {
+        "level": {
+          "const": "L3"
+        },
+        "purpose": {
+          "const": "mapping to structural models"
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projection_runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "mappings": {
+          "$ref": "#/$defs/mapping_table"
+        },
+        "limitations": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "structural_mapping_stage": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "runs",
+        "sources",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "recorded",
+            "not recorded",
+            "not performed",
+            "not applicable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact_ref"
+          },
+          "minItems": 0
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/structural_mapping_details"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "L3 mapping to structural models, not agreement or validation. Residue projection is L2 and does not require a coordinate model.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recorded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runs": {
+                "minItems": 1
+              },
+              "sources": {
+                "minItems": 1
+              },
+              "details": {
+                "$ref": "#/$defs/structural_mapping_details"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "null"
+              },
+              "runs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "peptide_workflow": {
+      "type": "object",
+      "required": [
+        "identification",
+        "envelope_processing",
+        "uptake",
+        "controls",
+        "calibration",
+        "reproducibility",
+        "validity",
+        "differential",
+        "projection",
+        "structural_mapping"
+      ],
+      "properties": {
+        "identification": {
+          "$ref": "#/$defs/identification_stage"
+        },
+        "envelope_processing": {
+          "$ref": "#/$defs/envelope_processing_stage"
+        },
+        "uptake": {
+          "$ref": "#/$defs/uptake_stage"
+        },
+        "controls": {
+          "$ref": "#/$defs/controls_stage"
+        },
+        "calibration": {
+          "$ref": "#/$defs/calibration_stage"
+        },
+        "reproducibility": {
+          "$ref": "#/$defs/reproducibility_stage"
+        },
+        "validity": {
+          "$ref": "#/$defs/validity_stage"
+        },
+        "differential": {
+          "$ref": "#/$defs/differential_stage"
+        },
+        "projection": {
+          "$ref": "#/$defs/projection_stage"
+        },
+        "structural_mapping": {
+          "$ref": "#/$defs/structural_mapping_stage"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Peptide HDX workflow. Every stage has an explicit reporting/performance status, including absent controls or analyses. Raw instrument files remain entry artifacts at L0. Not recorded does not mean not performed."
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "0.3.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^hdx_[0-9a-z]{8}$"
+    },
+    "kind": {
+      "enum": [
+        "hdx",
+        "structure"
+      ]
+    },
+    "state": {
+      "enum": [
+        "new",
+        "active",
+        "deleted"
+      ]
+    },
+    "revision": {
+      "type": "object",
+      "required": [
+        "revision_number",
+        "parent_revision_id",
+        "state"
+      ],
+      "properties": {
+        "revision_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "parent_revision_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "in_review",
+            "active",
+            "rejected",
+            "archived"
+          ]
+        },
+        "published_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "change_summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "title": {
+      "type": "string"
+    },
+    "method": {
+      "type": "string"
+    },
+    "method_source": {
+      "type": "string"
+    },
+    "polymer_entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "description",
+          "sequence",
+          "source_organisms",
+          "mutations",
+          "uniprot_mappings"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "construct": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sequence": {
+            "type": "string"
+          },
+          "source_organisms": {
+            "type": "array"
+          },
+          "mutations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "uniprot_mappings": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "hdx": {
+      "type": "object",
+      "description": "Extension: HDX experimental block, one record per sample (construct, replicate, labeling conditions), modeled on crystallography.crystals[].",
+      "properties": {
+        "samples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "polymer_entity",
+              "source"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "polymer_entity": {
+                "type": "string"
+              },
+              "measurement": {
+                "type": [
+                  "integer",
+                  "string",
+                  "null"
+                ],
+                "description": "index of the measurement within its construct, or 'mean'"
+              },
+              "mean_of_rows": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "source rows a mean averages, identified by recomputation"
+              },
+              "mean_check_max_abs_error": {
+                "type": "number"
+              },
+              "conditions_differ": {
+                "type": "boolean",
+                "description": "the averaged measurements differ in pH, temperature or buffer"
+              },
+              "library": {
+                "type": "string"
+              },
+              "pH": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "pH_labels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "merged_pH_series": {
+                "type": "boolean"
+              },
+              "temperature_kelvin": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "buffer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "labeling_times_s": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "source": {
+                "type": "object",
+                "required": [
+                  "artifact",
+                  "rows"
+                ]
+              }
+            }
+          }
+        },
+        "peptide_map": {
+          "type": "object",
+          "description": "Extension: peptide count and coverage, with the identification run (L1a)."
+        },
+        "peptide_workflow": {
+          "$ref": "#/$defs/peptide_workflow"
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "level",
+          "type",
+          "uri",
+          "sha256"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "L0",
+              "L1",
+              "L2",
+              "L3"
+            ]
+          },
+          "type": {
+            "enum": [
+              "model",
+              "structure_factors",
+              "fasta",
+              "other"
+            ]
+          },
+          "format": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "license": {
+            "type": "string"
+          },
+          "stored": {
+            "type": "boolean"
+          },
+          "processing_roles": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "L0",
+                "L1a",
+                "L1b",
+                "L1c",
+                "L1d",
+                "L1 technical reproducibility",
+                "L2",
+                "L3"
+              ]
+            },
+            "description": "Optional roles for multi-level files; broad artifact.level remains L0-L3. Selectors separate the content used by runs."
+          }
+        }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "software_name",
+          "software_version",
+          "inputs",
+          "outputs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "software_name": {
+            "type": "string"
+          },
+          "software_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "command": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parameters": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Generic legacy parameters. Structured peptide workflow details additionally document method-specific metadata and missing information."
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "artifact": {
+                  "type": "string"
+                },
+                "selector": {
+                  "$ref": "#/$defs/selector"
+                }
+              }
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "artifact": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "selector": {
+                  "$ref": "#/$defs/selector"
+                }
+              }
+            }
+          },
+          "stage": {
+            "enum": [
+              "identification",
+              "envelope_processing",
+              "uptake",
+              "controls",
+              "calibration",
+              "reproducibility",
+              "validity",
+              "differential",
+              "projection",
+              "structural_mapping"
+            ]
+          }
+        }
+      }
+    },
+    "undeclared_inputs": {
+      "type": "array",
+      "description": "Extension: sources a model depends on that cannot be registered as artifacts because no URI is known.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "revision_number",
+          "title",
+          "model_type",
+          "purpose",
+          "model_source",
+          "metrics"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^hdx_[0-9a-z]{8}_m_[0-9]{3,}$"
+          },
+          "revision_number": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "model_type": {
+            "enum": [
+              "Single Conformer",
+              "Multiconformer",
+              "Ensemble",
+              "Deposited",
+              "HDX ΔG set",
+              "HDX differential set"
+            ],
+            "description": "'HDX ΔG set' and 'HDX differential set' are extensions: L2 interpretations without coordinates."
+          },
+          "purpose": {
+            "enum": [
+              "Model Building",
+              "Refinement",
+              "Reference"
+            ]
+          },
+          "model_source": {
+            "enum": [
+              "pdb",
+              "ext"
+            ]
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "run": {
+            "type": "string"
+          },
+          "primary_artifact": {
+            "type": "string"
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "artifact": {
+                "type": "string"
+              },
+              "selector": {
+                "$ref": "#/$defs/selector"
+              }
+            }
+          },
+          "residue_frame": {
+            "type": "object",
+            "description": "Extension: the reference model whose label_* numbering the residue data use.",
+            "required": [
+              "entry",
+              "model",
+              "mapping"
+            ]
+          },
+          "residue_data": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "required": [
+                "label_asym_id",
+                "label_seq_id",
+                "label_comp_id"
+              ],
+              "properties": {
+                "sample": {
+                  "type": "string"
+                },
+                "label_asym_id": {
+                  "type": "string"
+                },
+                "label_seq_id": {
+                  "type": "integer"
+                },
+                "label_comp_id": {
+                  "type": "string"
+                },
+                "auth_asym_id": {
+                  "type": "string"
+                },
+                "auth_seq_id": {
+                  "type": "integer"
+                },
+                "pdbx_pdb_ins_code": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "dg": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "kobs": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "kint": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "logpf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "too_slow": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "site_data": {
+            "type": "object",
+            "description": "Extension: values for sites not assigned to residues."
+          },
+          "ensemble_members": {
+            "type": "integer"
+          },
+          "atom_count": {
+            "type": "integer"
+          },
+          "modeled_residues": {
+            "type": "integer"
+          },
+          "unique_protein_chains": {
+            "type": "integer"
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/metric"
+            }
+          }
+        }
+      }
+    },
+    "external_refs": {
+      "type": "object"
+    },
+    "view": {
+      "type": "string",
+      "pattern": "^view_[0-9a-z]+$"
+    },
+    "linked_entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "entry",
+          "basis"
+        ],
+        "properties": {
+          "entry": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fields or values not defined in Dynamic PDB v0.2.0."
+    },
+    "citation": {
+      "type": "string"
+    },
+    "ligands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "CCD identifiers in the sample or deposited model"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "const": "hdx"
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "hdx"
+            ],
+            "properties": {
+              "hdx": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "peptide_map"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "peptide_workflow"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "required": [
+              "method"
+            ],
+            "properties": {
+              "method": {
+                "enum": [
+                  "HDX-MS (peptide level)",
+                  "HDX-MS (peptide-level)",
+                  "peptide-level HDX-MS"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "then": {
+        "required": [
+          "hdx"
+        ],
+        "properties": {
+          "hdx": {
+            "required": [
+              "peptide_workflow"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

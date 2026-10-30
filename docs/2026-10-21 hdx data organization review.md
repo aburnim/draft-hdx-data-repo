@@ -1,6 +1,6 @@
 # HDX data organization: expert profiles and review
 
-Date: 2026-10-21. Reviewed document: [version 1.0](2026-10-21%20hdx%20data%20organization.md). Repository: `feature/eehee-prototype`, commit `743422c4f13a6cfcdf967549ebbfd78a4c1c6339`. Revision: [version 2.0](2026-10-21%20hdx%20data%20organization%20v2.md).
+Date: 2026-10-21. Reviewed document: [version 1.0](2026-10-21%20hdx%20data%20organization.md). Repository: `feature/eehee-prototype`, commit `0612dc74f13a6cfcdf967549ebbfd78a4c1c6339`. Revision: [version 2.0](2026-10-21%20hdx%20data%20organization%20v2.md).
 
 ## 1. Expert profiles established before review
 

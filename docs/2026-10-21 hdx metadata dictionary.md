@@ -5,7 +5,7 @@
 | Document version | 1.0 |
 | Date | 2026-10-21 |
 | Describes | Entry schema `schema/hdx_entry.v0.2.json` (0.2.0) and the `derivations` field of the view schema `schema/hdx_view.v0.2.json` (0.2.0) |
-| Repository state | branch `feature/eehee-prototype`, commit `743422c` |
+| Repository state | branch `feature/eehee-prototype`, commit `0612dc7` |
 | Status | Draft |
 | Contact | Andy Burnim, Astera Institute (Prism) |
 

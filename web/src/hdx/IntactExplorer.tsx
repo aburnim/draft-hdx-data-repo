@@ -8,7 +8,7 @@ import type { IntactView, MhdxMeasurement } from "./types";
 
 // The Explore tab of an intact-protein mHDX-MS entry. Intact data give sorted site ΔG and
 // whole-protein isotope distributions, not residue-resolved values, so there is no structure
-// coloring and no sequence lanes. Plots ported from web/src/hdx/plots.tsx at commit 743422c.
+// coloring and no sequence lanes. Plots ported from web/src/hdx/plots.tsx at commit 0612dc7.
 
 const ACCENT = "#663be4";
 

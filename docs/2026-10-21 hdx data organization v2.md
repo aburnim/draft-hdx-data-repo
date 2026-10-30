@@ -5,7 +5,7 @@
 | Document version | 2.0 |
 | Date | 2026-10-21 |
 | Describes | `schema/hdx_entry.v0.2.json` and `schema/hdx_view.v0.2.json` (0.2.0) |
-| Repository state reviewed | `feature/eehee-prototype`, commit `743422c` |
+| Repository state reviewed | `feature/eehee-prototype`, commit `0612dc7` |
 | Status | Draft; documentation revision, not a schema change |
 | Contact | Andy Burnim, Astera Institute (Prism) |
 | Companion | [Metadata dictionary](2026-10-21%20hdx%20metadata%20dictionary.md) |

@@ -5,7 +5,7 @@
 | Document version | 3.2 |
 | Date | 2026-10-22 |
 | Status | Draft, including proposed PRIDE-linked submission and import |
-| Current implementation reviewed | `feature/eehee-prototype` after commit `743422c`, peptide-level HDX-MS entry only; schemas 0.2.0 |
+| Current implementation reviewed | `feature/eehee-prototype` after commit `0612dc7`, peptide-level HDX-MS entry only; schemas 0.2.0 |
 | Proposed schemas | [Entry 0.3.0](../schema/hdx_entry.v0.3.json), [view 0.3.0](../schema/hdx_view.v0.3.json) |
 | Schema audit and validation | [Coverage, migration and limitations](2026-10-21%20hdx%20schema%20v0.3%20coverage.md) |
 | Metadata dictionary | [Scientific metadata and proposed submission fields](2026-10-21%20hdx%20metadata%20dictionary%20v3.md) |

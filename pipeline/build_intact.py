@@ -5,7 +5,7 @@ Builds one entry and one view per domain listed in DOMAINS. Each domain is ident
 UniProt accession in its Dataset_3 name (`<accession>.<sequence version>_<start>-<end>`); the
 build checks that the measured sequence aligns to UniProt residues start..end. Intact-protein
 data give sorted site ΔG without residue assignment, so the views carry no structure.
-Called from build_entries.main(); code reused from build_entries.py at commit 743422c.
+Called from build_entries.main(); code reused from build_entries.py at commit 0612dc7.
 """
 
 from __future__ import annotations

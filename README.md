@@ -207,7 +207,7 @@ out-of-date/                  earlier integration guide and figures (superseded)
   with Prism-internal permission; each copied file names its source path and changes.
 - 2026-10-22: the registry was narrowed to HDX-MS. The five Ferrari et al. 2026
   miniproteins (mHDX-MS, HDX-NMR and NMR reference structures) were removed; they remain in
-  the git history up to commit `743422c`. The same day, intact-protein mHDX-MS returned as a
+  the git history up to commit `0612dc7`. The same day, intact-protein mHDX-MS returned as a
   pilot of 4 natural domains with reviewed UniProt entries (HDX-NMR stays out).
 
 ### Verification done

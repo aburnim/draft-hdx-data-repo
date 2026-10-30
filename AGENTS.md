@@ -161,7 +161,7 @@ web/public/                  generated data served by the site (committed)
 The pilot domains are the only Dataset_3 natural domains whose UniProt entries are reviewed
 (4 of 1,529 accessions). Each measured sequence is HM + UniProt residues start..end (checked
 in the build). The five Ferrari miniproteins (de novo designs; mHDX-MS, HDX-NMR, NMR
-structures) were removed on 2026-10-22 and remain in the git history up to commit `743422c`.
+structures) were removed on 2026-10-22 and remain in the git history up to commit `0612dc7`.
 
 ### Pipeline
 
@@ -172,7 +172,7 @@ structures) were removed on 2026-10-22 and remain in the git history up to commi
   recorded. All parameters are in `PARAMS` in `build_peptide.py` and stored in the records.
 - The cross-entry view groups entries whose sequences align to the HDX construct
   (`views/view_ecdhfr.json`).
-- Intact-protein data (`build_intact.py`, code from `743422c`): Dataset_3 streamed with
+- Intact-protein data (`build_intact.py`, code from `0612dc7`): Dataset_3 streamed with
   `ijson` (only `DOMAINS` kept); UniProt accession from the Dataset_3 name, checked by
   alignment to UniProt residues start..end; raw mzML files cited per file from the PRIDE
   listing (each file holds a whole multiplexed library; `mutants04` assumed to be PRIDE

@@ -10,6 +10,9 @@ reference-structure entries) and 4 natural domains with intact-protein mHDX-MS (
 1 entry each). Field names
 follow the Dynamic PDB schema v0.2.0 (2026-10-16); HDX additions are listed per record.
 
+Draft site: https://aburnim.github.io/draft-hdx-data-repo/ (built from
+`feature/eehee-prototype` by `.github/workflows/pages.yml`).
+
 ## The problem
 
 HDX-MS reports how fast backbone amides exchange with solvent, which measures local

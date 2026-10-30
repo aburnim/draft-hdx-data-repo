@@ -17,7 +17,7 @@ import { DEUTERATION_RAMP, MISSING_COLOR, rampGradient, STABILITY_RAMP } from ".
 import { fmt, fmtTime, useText } from "./data";
 import Plot from "./Plot";
 import { SourceLine } from "./provenance-card";
-import type { Comparison, DiffClass, Peptide, PeptideView } from "./types";
+import type { Comparison, DiffClass, LigandContact, Peptide, PeptideView } from "./types";
 import { setResidueColors } from "./value-theme";
 
 // Peptide-level HDX-MS explorer. Residue positions are kept in construct numbering in the
@@ -187,7 +187,11 @@ export default function PeptideExplorer({ view }: { view: PeptideView }) {
     ],
     [],
   );
-  const extraLanes = useMemo(() => [classLane(comp, structure)], [comp, structure]);
+  const contactParams = view.parameters.ligand_contacts as { cutoff_angstrom: number; excluded_components: string[] };
+  const extraLanes = useMemo(
+    () => [classLane(comp, structure), ...view.structures.flatMap((s) => s.ligand_contacts.map((c) => contactLane(s, c, structure, contactParams.cutoff_angstrom)))],
+    [comp, structure, view, contactParams],
+  );
 
   const onLaneHover = useCallback((ref: ResidueRef | null) => setHover({ ref, from: "ui" }), []);
   const onLaneSelect = useCallback((r: ResidueRange) => setSelection([r]), []);
@@ -204,7 +208,7 @@ export default function PeptideExplorer({ view }: { view: PeptideView }) {
         <div className="relative h-[380px] overflow-hidden rounded-lg border border-line bg-white sm:h-[460px] lg:col-span-7">
           <MolstarViewer data={cif} binary={false} view={structView} onReady={setViewer} onLoaded={onLoaded} />
           <div className="pointer-events-none absolute left-2 top-2 rounded bg-white/85 px-2 py-1 font-mono text-[10.5px] text-ink-secondary">
-            {pdb} · {structure.ligands.filter((l) => l !== "CL" && l !== "GOL").join(", ") || "no ligand"}
+            {pdb} · {structure.ligands.filter((l) => !contactParams.excluded_components.includes(l)).join(", ") || "no ligand"}
             {hover.ref && <> · {hover.ref.chain}/{hover.ref.seq}</>}
           </div>
         </div>
@@ -283,6 +287,21 @@ export default function PeptideExplorer({ view }: { view: PeptideView }) {
           onSelect={onLaneSelect}
           leading={<span className="text-[11px] font-semibold uppercase tracking-wide text-ink-secondary">Sequence lanes ({pdb} numbering)</span>}
         />
+        <div className="mt-2 flex flex-col gap-1 border-t border-line pt-2 text-[11px] text-ink-muted">
+          <p>
+            Ligand contact lanes: residues with a heavy atom within {contactParams.cutoff_angstrom} Å of the ligand in each reference
+            structure, drawn on {pdb} numbering. A contact marks where a ligand sits in a crystal structure; it is not an HDX
+            observation. Compare it with the Class and ΔD lanes. Grey lanes are ligands absent from the HDX sample.
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {view.structures.flatMap((s) => s.ligand_contacts.map((c) => (
+              <span key={`${s.pdb}:${c.ccd}`} className="inline-flex min-w-0 items-center gap-1.5">
+                <span className="font-mono">{c.ccd} · {s.pdb}</span>
+                <SourceLine id={`lane:contacts:${s.pdb}:${c.ccd}`} compact />
+              </span>
+            )))}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -327,6 +346,46 @@ function classLane(comp: Comparison, structure: PeptideView["structures"][number
     readout: (ctx, pos) => {
       const p = ctx.chain.positions[pos - 1];
       return p?.ref ? byAuth.get(p.ref.seq) ?? "not covered" : null;
+    },
+  };
+}
+
+/** one ligand's contact residues in one reference structure, drawn on the displayed structure */
+function contactLane(
+  source: PeptideView["structures"][number], c: LigandContact, shown: PeptideView["structures"][number], cutoff: number,
+): LaneModule {
+  const color = c.role === "HDX state ligand" ? "#3f3f46" : "#a1a1aa";
+  const byAuth = new Set<number>();
+  for (const pos of c.contacts) {
+    const a = shown.auth_of[String(pos)];
+    if (a != null) byAuth.add(a);
+  }
+  const View = memo(function ContactLane({ ctx, onSelectSpan }: LaneProps) {
+    const n = Math.max(1, ctx.chain.length);
+    return (
+      <>
+        {ctx.chain.positions.map((p) => {
+          if (!p.ref || !byAuth.has(p.ref.seq)) return null;
+          return (
+            <button key={p.pos} type="button" title={`${c.ccd} contact (${source.pdb})`} onClick={() => onSelectSpan({ start: p.pos, end: p.pos }, { additive: true })}
+              className="absolute inset-y-0" style={{ left: `${((p.pos - 1) / n) * 100}%`, width: `${100 / n}%`, background: color }} />
+          );
+        })}
+      </>
+    );
+  });
+  return {
+    id: `contacts:${source.pdb}:${c.ccd}`,
+    label: `${c.ccd} · ${source.pdb}`,
+    description: `${c.name ?? c.ccd}: residues within ${cutoff} Å in ${source.pdb} (${c.role}; computed here)`,
+    // past the auto-show limit, ligands absent from the HDX sample give way first
+    defaultOn: c.role === "HDX state ligand",
+    height: 8,
+    unavailable: () => (byAuth.size ? null : `no ${c.ccd} contact residue maps to ${shown.pdb}`),
+    Component: View,
+    readout: (ctx, pos) => {
+      const p = ctx.chain.positions[pos - 1];
+      return p?.ref && byAuth.has(p.ref.seq) ? `${c.ccd} contact in ${source.pdb}` : null;
     },
   };
 }

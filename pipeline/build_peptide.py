@@ -19,13 +19,16 @@ import re
 import statistics
 import zipfile
 from collections import defaultdict
-from difflib import SequenceMatcher
 
+import gemmi
 from scipy import stats
 
 import build_entries as be
 
 NAME = "ecDHFR"
+# The protein's UniProt accession. build() checks that every reference structure maps to it
+# (_struct_ref) and aligns the construct to the UniProt sequence.
+UNIPROT = "P0ABQ4"
 PRIDE = "PXD057539"
 PAPER_DOI = "10.1038/s41589-025-02049-1"
 PREPRINT_DOI = "10.1101/2024.08.04.606547"
@@ -65,6 +68,12 @@ PARAMS = {
                    "value": "mean over covering tested peptides of max-|dD| / N_ex (signed), weighted by 1 / peptide length"},
     "mapping": {"method": "construct residue mapped to each structure's label_seq_id by sequence alignment (difflib, blocks > 5 residues)",
                 "mismatches": "recorded per structure"},
+    "ligand_contacts": {"method": "polymer residues of the reference chain with a heavy atom within the cutoff of a ligand heavy atom",
+                        "cutoff_angstrom": 4.0, "model": "first model; same asymmetric unit, no symmetry mates",
+                        "excluded_components": ["HOH", "CL", "GOL"],
+                        "excluded_reason": "water, chloride and glycerol: crystallization or cryoprotection components",
+                        "numbering": "contacts mapped to construct positions through the structure alignment",
+                        "status": "a contact marks where a ligand sits in a crystal structure; it is not an HDX observation"},
 }
 DIFF_CLASSES = ["more rigid", "more flexible", "mixed", "no observable difference", "not tested"]
 
@@ -145,23 +154,44 @@ def bin_of(bins: list[dict], t: float) -> str:
     raise KeyError(t)
 
 
-def align(construct: str, seq: str) -> tuple[dict[int, int], list[dict]]:
-    """construct position (1-based) -> structure label_seq_id, plus mismatches inside the
-    aligned region (single-residue gaps between matching blocks)."""
-    sm = SequenceMatcher(None, construct, seq, autojunk=False)
-    blocks = [b for b in sm.get_matching_blocks() if b.size > 5]
-    mapping, mism = {}, []
-    for b in blocks:
-        for i in range(b.size):
-            mapping[b.a + i + 1] = b.b + i + 1
-    for b1, b2 in zip(blocks, blocks[1:]):
-        ga, gb = b2.a - (b1.a + b1.size), b2.b - (b1.b + b1.size)
-        if ga == gb:
-            for i in range(ga):
-                a, s = b1.a + b1.size + i, b1.b + b1.size + i
-                mapping[a + 1] = s + 1
-                mism.append({"construct_pos": a + 1, "label_seq_id": s + 1, "construct": construct[a], "structure": seq[s]})
-    return mapping, mism
+def ligand_contacts(pdb: str, chain_id: str, construct_of: dict[int, int], state_ligand: str | None) -> list[dict]:
+    """Per ligand (CCD code) in a structure: construct positions of reference-chain residues in
+    contact, as declared in PARAMS["ligand_contacts"]."""
+    p = PARAMS["ligand_contacts"]
+    path = be.RAW / f"{pdb}.cif"
+    block = gemmi.cif.read(str(path)).sole_block()
+    names = dict(zip(block.find_values("_chem_comp.id"), block.find_values("_chem_comp.name")))
+    st = gemmi.read_structure(str(path))
+    st.setup_entities()
+    model = st[0]
+    ns = gemmi.NeighborSearch(model, st.cell, 6).populate()
+    found: dict[str, dict] = {}
+    for ch in model:
+        for res in ch:
+            if res.entity_type != gemmi.EntityType.NonPolymer or res.name in p["excluded_components"]:
+                continue
+            hit = set()
+            for atom in res:
+                if atom.is_hydrogen():
+                    continue
+                for mark in ns.find_atoms(atom.pos, "\0", radius=p["cutoff_angstrom"]):
+                    cra = mark.to_cra(model)
+                    # same asymmetric unit only: the untransformed distance must be within the cutoff
+                    if (cra.chain.name != chain_id or cra.residue.entity_type != gemmi.EntityType.Polymer
+                            or cra.atom.is_hydrogen() or cra.atom.pos.dist(atom.pos) > p["cutoff_angstrom"]):
+                        continue
+                    hit.add(cra.residue.label_seq)
+            if hit:
+                f = found.setdefault(res.name, {"label_seq": set(), "instances": 0})
+                f["label_seq"] |= hit
+                f["instances"] += 1
+    pos_of = {v: k for k, v in construct_of.items()}
+    return [{"ccd": ccd, "name": gemmi.cif.as_string(names.get(ccd, "")).lower() or None,
+             "role": "HDX state ligand" if ccd == state_ligand else "not in the HDX sample",
+             "instances": f["instances"],
+             "contacts": sorted(pos_of[s] for s in f["label_seq"] if s in pos_of),
+             "unmapped_label_seq_ids": sorted(s for s in f["label_seq"] if s not in pos_of)}
+            for ccd, f in sorted(found.items())]
 
 
 def fmt_time(s: float) -> str:
@@ -180,7 +210,7 @@ def welch(a: list[float], b: list[float]) -> tuple[float, float]:
     return float(res.statistic), float(res.pvalue)
 
 
-def build(revision: dict) -> tuple[dict, list[dict], list[dict]]:
+def build(revision: dict) -> tuple[dict, list[dict], dict]:
     hx = read_hxms()
     construct = hx["APO"]["meta"]["PROTEIN_SEQUENCE"]
     conditions = {k: hx["APO"]["meta"][k] for k in ("TEMPERATURE(K)", "pH(READ)", "D2O_SATURATION")}
@@ -307,9 +337,13 @@ def build(revision: dict) -> tuple[dict, list[dict], list[dict]]:
     view_id = "view_ecdhfr"
     ids = {"hdx": be.opaque_id(f"{NAME}|HDX-MS peptide")} | {s: be.opaque_id(f"{STATES[s]['pdb']}|structure") for s in STATES}
     structures = []
+    excluded = PARAMS["ligand_contacts"]["excluded_components"]
     for s, info in STATES.items():
         st = be.read_structure(info["pdb"])
-        mapping, mism = align(construct, st["sequence"])
+        # the protein is identified by UniProt; every reference structure must map to it
+        if st["uniprot"] != [UNIPROT]:
+            raise SystemExit(f"{info['pdb']} maps to UniProt {st['uniprot']}, expected {UNIPROT}")
+        mapping, mism = be.align(construct, st["sequence"])
         seq_of_pos = {p["pos"]: p["seq"] for p in st["chain"]["positions"]}
         structures.append({
             "pdb": info["pdb"], "entry": ids[s], "state": s, "title": st["title"], "method": st["method"],
@@ -317,10 +351,11 @@ def build(revision: dict) -> tuple[dict, list[dict], list[dict]]:
             "label_of": {str(k): v for k, v in mapping.items()},
             "auth_of": {str(k): seq_of_pos[v] for k, v in mapping.items() if v in seq_of_pos},
             "mismatches": mism,
+            "ligand_contacts": ligand_contacts(info["pdb"], st["chain"]["id"], mapping, info["ligand"]),
             "notes": ([f"sequence differs from the HDX construct at label_seq_id {m['label_seq_id']}: "
                        f"{m['construct']} (construct) vs {m['structure']} (structure)" for m in mism]
-                      + ([f"contains ligands not in the HDX state: {', '.join(x for x in st['ligands'] if x not in (info['ligand'], 'CL', 'GOL'))}"]
-                         if any(x not in (info["ligand"], "CL", "GOL") for x in st["ligands"]) else [])),
+                      + ([f"contains ligands not in the HDX state: {', '.join(x for x in st['ligands'] if x not in (info['ligand'], *excluded))}"]
+                         if any(x not in (info["ligand"], *excluded) for x in st["ligands"]) else [])),
         })
 
     # --- provenance nodes and runs (view) ---
@@ -390,6 +425,9 @@ def build(revision: dict) -> tuple[dict, list[dict], list[dict]]:
         {"id": "r_map", "software": "hdx-data-repo pipeline/build_peptide.py", "version": be.VERSION,
          "description": "Map residue classes onto each structure by sequence alignment; record mismatches",
          "inputs": ["m_diff", *[f"a_pdb_{x['pdb'].lower()}" for x in structures]], "outputs": ["a_view"], "parsed_from": "this repository"},
+        {"id": "r_contacts", "software": "hdx-data-repo pipeline/build_peptide.py", "version": be.VERSION,
+         "description": f"Ligand contacts per reference structure: heavy atoms within {PARAMS['ligand_contacts']['cutoff_angstrom']} Å, mapped to construct positions",
+         "inputs": [f"a_pdb_{x['pdb'].lower()}" for x in structures], "outputs": ["a_view"], "parsed_from": "this repository"},
     ]
 
     # metrics: L1 reproducibility and L2 class counts
@@ -402,6 +440,8 @@ def build(revision: dict) -> tuple[dict, list[dict], list[dict]]:
             metrics.append({"key": f"{c['id']}:{cls}", "value": c["counts"][cls], "unit": "peptides", "level": "L2",
                             "interpretation": "m_diff", "source_field": f"{c['id']} {cls}", "computed_here": True, "entry": ids["hdx"]})
 
+    protein, unp_mapping = be.uniprot_record(UNIPROT, construct)
+
     members = [{"id": ids["hdx"], "kind": "hdx", "method": "HDX-MS (peptide)", "title": f"{NAME}: peptide-level HDX-MS, APO / MTX / TMP"}] + [
         {"id": x["entry"], "kind": "structure", "method": x["method"], "title": f"{x['pdb']}: {x['title']}"} for x in structures]
 
@@ -410,7 +450,7 @@ def build(revision: dict) -> tuple[dict, list[dict], list[dict]]:
         "title": "E. coli dihydrofolate reductase: apo, methotrexate and trimethoprim states",
         "grouping": "Entries whose sequences align to the ecDHFR HDX construct (His-tag and TEV site excluded).",
         "members": members,
-        "protein": {"name": NAME, "origin": "natural protein", "topology": None, "uniprot": "P0ABQ4", "organism": "Escherichia coli"},
+        "protein": {"name": NAME, "origin": "natural protein", "topology": None, "uniprot": UNIPROT, "organism": "Escherichia coli"},
         "construct": {"sequence": construct, "note": "His-tag and TEV site (MTGHHHHHHENLYFQ) precede ecDHFR; S16 replaces M1"},
         "labeling_conditions": {"temperature_K": float(conditions["TEMPERATURE(K)"]), "pH_read": float(conditions["pH(READ)"]),
                        "d2o_saturation": float(conditions["D2O_SATURATION"])},
@@ -441,7 +481,7 @@ def build(revision: dict) -> tuple[dict, list[dict], list[dict]]:
         "method": "HDX-MS (peptide level)",
         "polymer_entities": [{"id": "pe_1", "description": "dihydrofolate reductase (E. coli)", "construct": "His-tag + TEV site + ecDHFR (S16 replaces M1)",
                               "sequence": construct, "source_organisms": [{"scientific_name": "Escherichia coli", "ncbi_taxonomy_id": 562}],
-                              "mutations": [], "uniprot_mappings": [{"accession": "P0ABQ4", "source": "alignment", "unp_release": None}]}],
+                              "mutations": [], "uniprot_mappings": [unp_mapping]}],
         "ligands_by_sample": {s: STATES[s]["ligand"] for s in STATES},
         "hdx": {
             "samples": [{"id": s, "polymer_entity": "pe_1", "state": STATES[s]["label"], "ligand": STATES[s]["ligand"],
@@ -503,7 +543,7 @@ def build(revision: dict) -> tuple[dict, list[dict], list[dict]]:
         linked = [{"entry": ids["hdx"], "method": "HDX-MS (peptide)", "basis": "sequence alignment (same cross-entry view)"}] + [
             {"entry": y["entry"], "method": y["method"], "basis": "sequence alignment (same cross-entry view)"} for y in structures if y is not x]
         structure_entries.append(be.structure_record(x["pdb"], x["struct"], x["entry"], view_id, linked, CITATION, revision, x["notes"]))
-    return view, [hdx_entry, *structure_entries], peptides
+    return view, [hdx_entry, *structure_entries], protein
 
 
 def derivations(view: dict, ids: dict, structures: list[dict]) -> list[dict]:
@@ -553,6 +593,14 @@ def derivations(view: dict, ids: dict, structures: list[dict]) -> list[dict]:
         out.append(rec(f"structure:coords:{x['pdb']}", f"Structure coordinates ({x['pdb']})", "copied", x["entry"],
                        [{"artifact": f"a_pdb_{x['pdb'].lower()}", "fields": ["whole file"], "rows": []}],
                        check=f"shasum -a 256 web/public/structures/{x['pdb']}.cif"))
+    lc = PARAMS["ligand_contacts"]
+    for x in structures:
+        for c in x["ligand_contacts"]:
+            out.append(rec(f"lane:contacts:{x['pdb']}:{c['ccd']}", f"{c['ccd']} contacts in {x['pdb']} (L3)", "computed", x["entry"],
+                           [{"artifact": f"a_pdb_{x['pdb'].lower()}", "fields": ["_atom_site"], "rows": [c["ccd"]]}],
+                           op=f"{lc['method']}; cutoff {lc['cutoff_angstrom']} Å; {lc['model']}. {lc['numbering']}.",
+                           code="pipeline/build_peptide.py (ligand_contacts)",
+                           check=f"jq '.structures[] | select(.pdb==\"{x['pdb']}\") | .ligand_contacts[] | select(.ccd==\"{c['ccd']}\")' {vj}"))
     for m in view["metrics"]:
         out.append(rec(f"metric:{m['key']}", m["key"], "computed", m["entry"],
                        [{"artifact": "a_repro" if m["level"] == "L1" else "m_diff", "fields": [m["source_field"]], "rows": []}],

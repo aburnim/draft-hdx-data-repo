@@ -22,9 +22,37 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
 LOCK = ROOT / "sources.lock.json"
 
+ZENODO = "https://zenodo.org/records/14983481/files"
+ZENODO_LICENSE = "CC-BY-4.0"
+
 # One row per file. `level` follows Dynamic PDB's data levels, used loosely for HDX
 # (see README, "Data model").
 SOURCES = [
+    # --- intact-protein mHDX-MS: Ferrari et al. 2026 (Nature), Rocklin lab ---
+    {
+        "id": "zenodo_dataset3",
+        "file": "Dataset_3_MeasurablyStable.json",
+        "url": f"{ZENODO}/Dataset_3_MeasurablyStable.json?download=1",
+        "license": ZENODO_LICENSE,
+        "level": "L1",
+        "title": "mHDX-MS isotope distributions and fitted exchange rates, measurably stable domains",
+    },
+    {
+        "id": "pride_pxd061702",
+        "file": "PXD061702.json",
+        "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD061702",
+        "license": "CC0-1.0",
+        "level": "L0",
+        "title": "PRIDE project record for the raw mHDX-MS files",
+    },
+    {
+        "id": "pride_pxd061702_files",
+        "file": "PXD061702_files.json",
+        "url": "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/PXD061702/files/all",
+        "license": "CC0-1.0",
+        "level": "L0",
+        "title": "PRIDE file listing for PXD061702 (names, sizes, FTP locations)",
+    },
     # --- peptide-level HDX-MS: ecDHFR, Glasgow lab (Lu et al. 2026, Nat. Chem. Biol.) ---
     {
         "id": "pride_pxd057539",
@@ -42,6 +70,26 @@ SOURCES = [
         "level": "L0",
         "title": "PRIDE file listing for PXD057539",
     },
+    # UniProt records of the proteins: name, gene, organism and reference sequence. Each
+    # accession is checked in the build (reference structures' _struct_ref for ecDHFR;
+    # sequence alignment for every protein).
+    *[
+        {
+            "id": f"uniprot_{acc.lower()}",
+            "file": f"uniprot_{acc}.json",
+            "url": f"https://rest.uniprot.org/uniprotkb/{acc}.json",
+            "license": "CC-BY-4.0",
+            "level": "reference",
+            "title": f"UniProtKB {acc} ({entry}), {desc}",
+        }
+        for acc, entry, desc in [
+            ("P0ABQ4", "DYR_ECOLI", "dihydrofolate reductase, E. coli"),
+            ("Q46798", "YGER_ECOLI", "uncharacterized lipoprotein YgeR, E. coli"),
+            ("Q9V853", "SMUF1_DROME", "E3 ubiquitin-protein ligase Smurf1, D. melanogaster"),
+            ("Q8CFI0", "NED4L_MOUSE", "E3 ubiquitin-protein ligase NEDD4-like, mouse"),
+            ("Q9DBH0", "WWP2_MOUSE", "NEDD4-like E3 ubiquitin-protein ligase WWP2, mouse"),
+        ]
+    ],
     # The journal site blocks scripted downloads, so this file is placed by hand and
     # checked against its pinned hash (see README, "How to use it").
     {
@@ -68,7 +116,8 @@ SOURCES = [
 ]
 
 # Code is pinned by commit, not downloaded: the lock records what was current when fetched.
-REPOS = ["glasgowlab/PIGEON-FEATHER"]
+REPOS = ["Rocklin-Lab/mhdx_pipeline", "Rocklin-Lab/hdxrate_pipeline", "Rocklin-Lab/mhdx_analysis",
+         "glasgowlab/PIGEON-FEATHER"]
 
 
 def sha256(path: Path) -> str:

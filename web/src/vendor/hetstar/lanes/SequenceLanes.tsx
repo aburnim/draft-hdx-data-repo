@@ -2,7 +2,8 @@
 // Trimmed: the chain header statistics, conformer plan, PDBe annotations, expandable
 // lanes, right-click menu and PinPopover drawer are dropped (the drawer is a <details>
 // list here). Changed: color-by is chosen by the host and passed in, and the host can add
-// its own lane modules (`extraLanes`).
+// its own lane modules (`extraLanes`). Lanes auto-show up to MAX_AUTO_LANES (defaultOn lanes
+// first), and only the reader's explicit on/off choices are stored.
 
 import { type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -32,26 +33,31 @@ const RULER_H = 20;
 const ZOOMS = [5, 8, 11, 14, 18, 24];
 const MAX_ZOOM = ZOOMS[ZOOMS.length - 1];
 const PINCH = 100;
-const STORAGE_KEY = "hdx.lanes.enabled";
+const STORAGE_KEY = "hdx.lanes.choices";
+/** available lanes shown without a reader choice; defaultOn lanes take the first slots */
+const MAX_AUTO_LANES = 10;
 const COLOR_SELECTION = "rgba(34, 167, 71, 0.2)"; // Mol*'s select green, washed
 const COLOR_HOVER = "rgba(102, 59, 228, 0.14)"; // the accent
 
-function loadEnabled(fallback: Set<string>): Set<string> {
+/** the reader's explicit choices, lane id -> on/off; lanes without a choice follow the auto rule */
+function loadChoices(): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const arr: unknown = JSON.parse(raw);
-      if (Array.isArray(arr)) return new Set(arr.filter((x): x is string => typeof x === "string"));
+      const obj: unknown = JSON.parse(raw);
+      if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+        return Object.fromEntries(Object.entries(obj).filter((e): e is [string, boolean] => typeof e[1] === "boolean"));
+      }
     }
   } catch {
-    /* no storage: defaults */
+    /* no storage: auto rule only */
   }
-  return fallback;
+  return {};
 }
 
-function saveEnabled(set: Set<string>) {
+function saveChoices(choices: Record<string, boolean>) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(choices));
   } catch {
     /* ignore */
   }
@@ -188,10 +194,9 @@ export default function SequenceLanes({
   leading?: ReactNode;
 }) {
   const allModules = useMemo(() => [...BASE_LANES, ...extraLanes, ...metricLanes], [extraLanes, metricLanes]);
-  const defaults = useMemo(() => new Set(allModules.filter((m) => m.defaultOn).map((m) => m.id)), [allModules]);
   const [zoom, setZoom] = useState<number | null>(null);
   const [fitWidth, setFitWidth] = useState(0);
-  const [enabled, setEnabled] = useState<Set<string>>(defaults);
+  const [choices, setChoices] = useState<Record<string, boolean>>({});
   const [localHover, setLocalHover] = useState<number | null>(null);
   const [drag, setDrag] = useState<[number, number] | null>(null);
   const [viewerNode, setViewerNode] = useState<HTMLDivElement | null>(null);
@@ -202,7 +207,9 @@ export default function SequenceLanes({
   const anchorRef = useRef<{ fraction: number; clientX: number } | null>(null);
   const laneRectRef = useRef<{ left: number; width: number } | null>(null);
 
-  useEffect(() => setEnabled(loadEnabled(defaults)), [defaults]);
+  useEffect(() => {
+    setChoices(loadChoices());
+  }, []);
 
   const chain = model?.chains[0] ?? null;
 
@@ -377,6 +384,15 @@ export default function SequenceLanes({
     localHover ?? (hoverRef && chain && hoverRef.chain === chain.chain && model ? positionOf(model, hoverRef) : null);
   const dragSpan: PositionSpan | null = drag ? { start: Math.min(drag[0], drag[1]), end: Math.max(drag[0], drag[1]) } : null;
 
+  // auto rule: every available lane, up to MAX_AUTO_LANES, defaultOn lanes first; a reader's
+  // explicit choice overrides it for that lane
+  const enabled = useMemo(() => {
+    const available = ctx ? allModules.filter((m) => m.unavailable(ctx) === null) : [];
+    const ranked = [...available.filter((m) => m.defaultOn), ...available.filter((m) => !m.defaultOn)];
+    const auto = new Set(ranked.slice(0, MAX_AUTO_LANES).map((m) => m.id));
+    return new Set(allModules.filter((m) => choices[m.id] ?? auto.has(m.id)).map((m) => m.id));
+  }, [ctx, allModules, choices]);
+
   const lanes = useMemo(
     () => (ctx ? allModules.filter((m) => enabled.has(m.id) && m.unavailable(ctx) === null) : []),
     [ctx, allModules, enabled],
@@ -384,14 +400,12 @@ export default function SequenceLanes({
 
   const toggleLane = useCallback(
     (id: string) =>
-      setEnabled((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        saveEnabled(next);
+      setChoices((prev) => {
+        const next = { ...prev, [id]: !enabled.has(id) };
+        saveChoices(next);
         return next;
       }),
-    [],
+    [enabled],
   );
 
   const readout = useMemo(() => {

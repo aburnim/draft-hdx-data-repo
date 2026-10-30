@@ -4,8 +4,10 @@ A registry-style view of hydrogen-deuterium exchange (HDX) data in which every d
 value is traced to its archived source file. Built for the Prism project (Astera
 Institute) as a first test of how HDX-MS could sit alongside Dynamic PDB.
 
-Status: prototype, schemas `0.2.0` (draft). The registry covers HDX-MS only. One protein,
-*E. coli* DHFR: 1 peptide-level HDX-MS entry and 3 reference-structure entries. Field names
+Status: prototype, schemas `0.2.0` (draft). The registry covers HDX-MS only, peptide-level
+and intact-protein. Five proteins: *E. coli* DHFR (1 peptide-level HDX-MS entry and 3
+reference-structure entries) and 4 natural domains with intact-protein mHDX-MS (pilot,
+1 entry each). Field names
 follow the Dynamic PDB schema v0.2.0 (2026-10-16); HDX additions are listed per record.
 
 ## The problem
@@ -44,6 +46,7 @@ the supplement of Weber et al., *Bioinformatics* 2026). Reference structures:
 | L1 reproducibility | replicate SD per peptide and time; median 0.06 to 0.08 Da per state | computed here (`r_repro`) |
 | L2 differential | per-peptide classes (more rigid, more flexible, mixed, no observable difference, not tested) and residue projection | computed here (`r_diff`): hybrid test (Welch p < 0.01 and \|ΔD\| > global limit, Hageman & Weis 2019), same-day replicates only |
 | L3 mapping to structural models | residue classes on 5DFR, 1RG7, 6XG5 via sequence alignment; mismatches recorded | computed here (`r_map`) |
+| L3 ligand contacts | residues within 4 Å of each ligand in each reference structure (MTX in 1RG7; TMP and NADPH in 6XG5), in construct positions | computed here (`r_contacts`); water, chloride and glycerol excluded |
 
 Results, exploratory and dependent on the parameters above:
 
@@ -51,8 +54,32 @@ Results, exploratory and dependent on the parameters above:
   more flexible.
 - **APO vs MTX** (2 paired replicates, limit 1.26 Da): 2 peptides more rigid (residues 10 to
   17 and 50 to 62); 260 peptides not tested. Two paired replicates give low power.
-- 6XG5 differs from the HDX construct at residue 37 (N vs D) and also contains NADPH; both
-  are noted on its entry.
+- At UniProt residue 37 (construct residue 52), the HDX construct, 5DFR and 1RG7 have D;
+  UniProt P0ABQ4 (strain K-12) and 6XG5 have N. 6XG5 also contains NADPH. Both
+  differences are recorded on the entries.
+
+## The data: intact-protein mHDX-MS of natural domains (pilot)
+
+Four natural domains from Ferrari et al. (*Nature* 2026; Zenodo
+[10.5281/zenodo.14983481](https://doi.org/10.5281/zenodo.14983481) Dataset_3, CC-BY-4.0; PRIDE
+[PXD061702](https://www.ebi.ac.uk/pride/archive/projects/PXD061702), CC0). Of 3,590 proteins in
+Dataset_3, 1,637 are natural domains named `<UniProt>.<version>_<start>-<end>`; the pilot takes
+the 4 whose UniProt entries are reviewed.
+
+| Domain | UniProt | Family (Dataset_3 `PF`) | Library, pH | Raw mzML files |
+| --- | --- | --- | --- | --- |
+| YgeR 42-84, *E. coli* | Q46798 | LysM | Lib09, pH 6 | 34 |
+| Smurf1 169-198, *D. melanogaster* | Q9V853 | WW | Lib08, pH 6 + pH 9 merged | 67 |
+| NEDD4L 528-557, mouse | Q8CFI0 | WW | Lib11, pH 6 | 34 |
+| WWP2 446-475, mouse | Q9DBH0 | WW | Lib13, pH 6 + pH 9 merged | 68 |
+
+- **What intact data show:** isotope distributions over time, uptake (centroid), and sorted
+  site ΔG from the authors' rate fit. Sites are ranks, not residues, so there is no
+  structure coloring and there are no residue lanes.
+- **Identity check:** each measured sequence is HM + UniProt residues start..end; the build
+  fails if the alignment differs. The origin of HM is not stated.
+- **Raw files:** the experiment is multiplexed, so each mzML file holds a whole library and is
+  cited by every domain in it.
 
 ## Data model
 
@@ -74,6 +101,10 @@ field):
 - **Cross-entry views are derived, not declared.** Entries whose sequences align to the same
   HDX construct form one view (`views/view_ecdhfr.json`). The Explore tab draws the view;
   the other tabs describe one entry's record.
+- **Proteins are identified by UniProt.** The front page lists proteins by accession. The
+  accession is checked against each reference structure (`_struct_ref`); the name, gene and
+  organism come from the pinned UniProt record. The construct is aligned to the UniProt
+  sequence, and the mapping and mismatches are stored in `uniprot_mappings`.
 - **IDs:** `hdx_` + 8 characters per entry, derived from a stable key so rebuilds keep them;
   models `<entry>_m_NNN` as in v0.2.0.
 
@@ -101,7 +132,7 @@ Each entry lists the fields or values it uses that v0.2.0 does not define:
 ## How to use it
 
 Requirements: macOS or Linux, conda (or mamba), and an internet connection for the
-first fetch (about 20 MB).
+first fetch (about 305 MB; Dataset_3 is 286 MB).
 
 ```zsh
 conda env create -f environment.yml
@@ -121,20 +152,24 @@ npm run dev                         # http://localhost:5173
 
 The built site (`web/dist/`) is static. Routes:
 
-- `#/` the HDX entry list
+- `#/` proteins by UniProt accession
+- `#/protein/<accession>` one protein and its HDX-MS entries
 - `#/entry/<hdx_id>/<tab>`; tabs: Explore (cross-entry view), Overview, Models, Downloads.
   `#/entry/<hdx_id>/provenance` opens the Overview tab at its Provenance section.
 
 ### What the entry page shows
 
-- **Linked entries** of the same view, in the header.
+- **Reference structures** in the header: on the HDX entry, one per state; on a structure
+  entry, the HDX entry and state it is the reference for.
 - **Explore:** Mol\* structure colored by differential class, ΔD per amide, or coverage; a
-  structure selector; sequence lanes (from hetstar); peptide map, uptake (with a
+  structure selector; sequence lanes (from hetstar), including one ligand contact lane per
+  ligand and reference structure, drawn on the displayed structure; peptide map, uptake (with a
   back-exchange correction toggle), Woods, volcano, ΔD chiclet and reproducibility plots;
   an identification panel.
 - **Overview,** in order: method, metrics and the schema extensions used; a Provenance
   section (the run graph of the linked entries, with this entry's nodes tinted, and the
-  entry's artifacts, including the PRIDE raw files with FTP links); polymer entities;
+  entry's artifacts, including the PRIDE raw files with FTP links); polymer entities, with
+  their UniProt mapping;
   samples; and a table of where each value comes from.
 - **Models:** the entry's models.
 - **Per-value provenance:** every metric, plot and structure coloring has a source line
@@ -156,7 +191,7 @@ pipeline/build_peptide.py     peptide-level HDX-MS (ecDHFR): charge merging, cor
 web/                          Vite + React 18 + TypeScript + Tailwind + Mol* 5.11 + Plotly
   src/vendor/hetstar/         code copied and trimmed from hetstar (each file says what changed)
   src/hdx/                    HDX-specific viewer code
-  src/pages/                  entry list (Browse.tsx) and entry page
+  src/pages/                  protein list (Browse.tsx), protein page, entry page
   public/                     generated data the site serves
 out-of-date/                  earlier integration guide and figures (superseded)
 ```
@@ -167,9 +202,10 @@ out-of-date/                  earlier integration guide and figures (superseded)
 - The viewer adapts [hetstar](https://github.com/rtviii/hetstar) by rtviii (commit
   `fc08cdb`), the heterogeneity viewer used in Dynamic PDB. Files were copied, not forked,
   with Prism-internal permission; each copied file names its source path and changes.
-- 2026-10-22: the registry was narrowed to HDX-MS. The intact-protein entries from Ferrari
-  et al. 2026 (mHDX-MS, HDX-NMR and five NMR reference structures) were removed; they
-  remain in the git history up to commit `743422c`.
+- 2026-10-22: the registry was narrowed to HDX-MS. The five Ferrari et al. 2026
+  miniproteins (mHDX-MS, HDX-NMR and NMR reference structures) were removed; they remain in
+  the git history up to commit `743422c`. The same day, intact-protein mHDX-MS returned as a
+  pilot of 4 natural domains with reviewed UniProt entries (HDX-NMR stays out).
 
 ### Verification done
 
@@ -213,11 +249,17 @@ Peptide-level questions:
 
 Other:
 
+- Entries without a UniProt accession (de novo designs, fusions, complexes) need a browse
+  key; none exist yet.
+- The source of the D37 variant in the HDX construct is not stated. The entry records
+  `ncbi_taxonomy_id` 562 (*E. coli*); UniProt P0ABQ4 is strain K-12 (taxon 83333).
 - hetstar has no LICENSE file; ask rtviii to add one for the record.
 
 ## Citation and license
 
-Data: Lu et al., *Site-resolved energetic information from HX-MS experiments*, Nat. Chem.
+Data: Ferrari et al., *Large-scale discovery, analysis, and design of protein energy
+landscapes*, Nature (2026), doi:10.1038/s41586-026-10465-z (Zenodo 14983481, CC-BY-4.0; PRIDE
+PXD061702, CC0); Lu et al., *Site-resolved energetic information from HX-MS experiments*, Nat. Chem.
 Biol. (2026), doi:10.1038/s41589-025-02049-1 (PRIDE PXD057539, CC0); Weber et al., *HXMS: a
 standardized file format for HX-MS data*, Bioinformatics (2026),
 doi:10.1093/bioinformatics/btag113 (supplement license unverified). Derived values are

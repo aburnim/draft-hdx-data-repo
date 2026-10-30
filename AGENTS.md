@@ -21,11 +21,13 @@ with HDX additions listed per record in `extensions`.
 
 These come from the project owner and an HDX-MS reviewer. Do not relax them.
 
-- **HDX-MS only.** The registry holds HDX-MS data. HDX-NMR and intact-protein mHDX-MS
-  (Ferrari et al. 2026) were removed on 2026-10-22 and are out of scope; do not add them
-  back unless the owner asks.
-- **HDX-centered.** The front page lists HDX entries only (`#/`). Structures are supporting
-  entries, reached from HDX entries.
+- **HDX-MS only.** The registry holds HDX-MS data: peptide-level and intact-protein
+  (mHDX-MS). HDX-NMR is out of scope; do not add it back unless the owner asks.
+  Intact-protein mHDX-MS returned on 2026-10-22 as a pilot of 4 natural domains.
+- **Protein-rooted browsing.** The front page (`#/`) lists proteins by UniProt accession; each
+  protein page (`#/protein/<accession>`) lists its HDX-MS entries. Structures are supporting
+  entries, reached from HDX entries. The accession comes from a pinned UniProt record and
+  is checked against the reference structures (`_struct_ref`).
 - **One entry per experimental context** (Dynamic PDB v0.2.0: one `method` per entry).
   Constructs are polymer entities; conditions and replicates are samples (`hdx.samples`).
 - **IDs use the `hdx_` prefix**, not `dpdb_`. Entry IDs are `hdx_` + 8 base-36 characters
@@ -129,7 +131,7 @@ Use these terms consistently in code, records and site text.
   zip of Weber et al. 2026 (doi:10.1093/bioinformatics/btag113) must be saved by hand as
   `~/Downloads/btag113_supplementary_data.zip`; `fetch.py` copies it and checks SHA-256
   `77b3d872…3fd4`.
-- `data/raw/` holds about 18 MB (mostly the HXMS supplement zip). It is git-ignored.
+- `data/raw/` holds about 305 MB (Dataset_3 is 286 MB). It is git-ignored.
 
 ## Layout
 
@@ -137,10 +139,11 @@ Use these terms consistently in code, records and site text.
 pipeline/fetch.py            sources -> data/raw/, sources.lock.json
 pipeline/build_entries.py    entry list, schema validation, shared helpers; calls build_peptide
 pipeline/build_peptide.py    peptide-level entry (ecDHFR), its structure entries and view
+pipeline/build_intact.py     intact-protein mHDX-MS entries (natural domains, Dataset_3), one view each
 schema/hdx_entry.v0.2.json   entry record schema
 schema/hdx_view.v0.2.json    cross-entry view schema (derived display records)
-web/src/pages/               Browse.tsx (entry list), Entry.tsx (tabs)
-web/src/hdx/                 PeptideExplorer.tsx (Explore tab), card.tsx, Plot.tsx, Provenance.tsx,
+web/src/pages/               Browse.tsx (protein list), Protein.tsx (one protein), Entry.tsx (tabs)
+web/src/hdx/                 PeptideExplorer.tsx, IntactExplorer.tsx (Explore tabs), card.tsx, Plot.tsx, Provenance.tsx,
                              provenance-card.tsx, colors.ts, value-theme.ts, types.ts
 web/src/vendor/hetstar/      Mol* wrapper and sequence lanes copied from hetstar
 web/public/                  generated data served by the site (committed)
@@ -148,14 +151,17 @@ web/public/                  generated data served by the site (committed)
 
 ## What was built
 
-### Entries (4 total)
+### Entries (8 total, 5 proteins)
 
 | Group | Entries | Source |
 | --- | --- | --- |
 | ecDHFR (apo, methotrexate, trimethoprim) | 1 peptide-level HDX-MS entry; 3 structures (5DFR, 1RG7, 6XG5) | Lu et al. 2026; PRIDE PXD057539; HXMS supplement of Weber et al. 2026 |
+| 4 natural domains: YgeR 42-84 (LysM, Q46798), Smurf1 169-198 (WW, Q9V853), NEDD4L 528-557 (WW, Q8CFI0), WWP2 446-475 (WW, Q9DBH0) | 4 intact-protein mHDX-MS entries, no structures | Ferrari et al. 2026; Zenodo 14983481 (Dataset_3); PRIDE PXD061702 |
 
-The five Ferrari et al. 2026 miniproteins (mHDX-MS, HDX-NMR and NMR reference structures)
-were removed on 2026-10-22. They remain in the git history up to commit `743422c`.
+The pilot domains are the only Dataset_3 natural domains whose UniProt entries are reviewed
+(4 of 1,529 accessions). Each measured sequence is HM + UniProt residues start..end (checked
+in the build). The five Ferrari miniproteins (de novo designs; mHDX-MS, HDX-NMR, NMR
+structures) were removed on 2026-10-22 and remain in the git history up to commit `743422c`.
 
 ### Pipeline
 
@@ -166,17 +172,26 @@ were removed on 2026-10-22. They remain in the git history up to commit `743422c
   recorded. All parameters are in `PARAMS` in `build_peptide.py` and stored in the records.
 - The cross-entry view groups entries whose sequences align to the HDX construct
   (`views/view_ecdhfr.json`).
+- Intact-protein data (`build_intact.py`, code from `743422c`): Dataset_3 streamed with
+  `ijson` (only `DOMAINS` kept); UniProt accession from the Dataset_3 name, checked by
+  alignment to UniProt residues start..end; raw mzML files cited per file from the PRIDE
+  listing (each file holds a whole multiplexed library; `mutants04` assumed to be PRIDE
+  `mut04`, flagged as inferred).
 
 ### Site
 
-- Front page: list of HDX entries (1).
+- Front page: proteins by UniProt accession (1). Protein page: identity from UniProt and
+  the protein's HDX-MS entries.
 - Entry page tabs: Explore (cross-entry view), Overview (in order: record, metrics and
   schema extensions; Provenance section with the run graph and artifacts; polymer
   entities; samples; "where each value comes from"), Models, Downloads. `#/entry/<id>/provenance` opens the Overview
   tab at the Provenance section.
-- Explore: structure colored by differential class, ΔD per amide, or coverage;
-  structure selector; peptide map, uptake (corrected toggle), Woods, volcano, ΔD chiclet,
+- Peptide Explore: structure colored by differential class, ΔD per amide, or coverage;
+  structure selector; ligand contact lanes (one per ligand and reference structure,
+  computed here, 4 Å; a contact is not an HDX observation); peptide map, uptake (corrected toggle), Woods, volcano, ΔD chiclet,
   reproducibility; identification panel.
+- Intact Explore (mHDX-MS): sorted site ΔG, uptake (centroids, computed here) and
+  isotope distributions; no structure or lanes (sites are not assigned to residues).
 - Provenance cards on every source line: files, checksums, run chain, operation, `jq`
   check command, raw-data status.
 
@@ -188,24 +203,39 @@ Prioritized. Items marked (decision) need the owner or the Dynamic PDB team.
    files and drop the manual-download step.
 2. **Add FEATHER ΔGop as a peer L2 model** for ecDHFR (authors' residue-level analysis;
    *Nat. Chem. Biol.* Source Data, apo states). Not retrieved yet.
-3. **Envelope viewer** for peptide-level data (HXMS envelopes per peptide, time, replicate).
-4. **Reproducible user filters**: record a reader's thresholds as a run so a shared link
+3. **Ligand sites across the PDB** on the protein page: UniProt-numbered lanes of ligands
+   observed in all PDB entries of the protein (candidate source: PDBe-KB, pinned; confirm
+   endpoint and license), next to each HDX-MS comparison. The entry-level lanes cover only
+   the entry's reference structures.
+4. **Envelope viewer** for peptide-level data (HXMS envelopes per peptide, time, replicate).
+5. **Reproducible user filters**: record a reader's thresholds as a run so a shared link
    reproduces the view.
-5. **Merge** `feature/eehee-prototype` into `main` after review.
-6. **Raw-file checksums.** PRIDE lists none; computing them means downloading up to 27 GB
+6. **Merge** `feature/eehee-prototype` into `main` after review.
+7. **Raw-file checksums.** PRIDE lists none; computing them means downloading up to 27 GB
    per file. Decide whether to compute, or record PRIDE accessions as file identity
    (decision).
-7. **Schema cleanup (decision).** The v0.2 and v0.3 schemas still allow intact-protein
+8. **Schema cleanup (decision).** The v0.2 and v0.3 schemas still allow intact-protein
    values (`method` enum `HDX-NMR`/`mHDX-MS`, view `kind: "intact"`, Dataset_4 sample
    fields). Removing them is a removal, so it needs a major version bump under the rule
    above.
-8. **Dynamic PDB open decisions** (also in README): L2 interpretations without
+9. **Entries without a UniProt accession** (decision): de novo designs, fusions and
+   complexes need another browse key.
+10. **Dynamic PDB open decisions** (also in README): L2 interpretations without
    coordinates; HDX metric and residue keys; HDX experimental block; one level for
    multi-level files; declaring sources with no URI; cross-entry relations.
 
 ### Open data questions
 
-- 6XG5 differs from the ecDHFR HDX construct at residue 37 (N vs D) and contains NADPH.
+- Dataset_3 `dg_max` and `dg_median` are not defined in the source. `dg_max` equals the
+  highest `free_energy` value for 3 pilot domains but not for WWP2 (merged pH series: 2.12
+  vs 2.47 kcal/mol); `dg_median` is not the median of `free_energy`. Both are shown as
+  copied, with this caveat in their hints.
+- The origin of the 2 N-terminal residues (HM) in each Dataset_3 domain sequence is not stated.
+
+- At UniProt residue 37 (construct 52), the HDX construct, 5DFR and 1RG7 have D; UniProt
+  P0ABQ4 (strain K-12) and 6XG5 have N. The source of the D37 variant is not stated. 6XG5
+  also contains NADPH.
+- The entry records source taxon 562 (*E. coli*); UniProt P0ABQ4 is K-12 (taxon 83333).
 
 ## Testing
 

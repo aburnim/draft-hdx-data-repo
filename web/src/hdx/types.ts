@@ -70,21 +70,38 @@ export interface ViewMember {
   title: string;
 }
 
-/** one row of web/public/index.json: the front page list of HDX entries */
+/** one HDX entry of a protein in web/public/index.json */
 export interface EntryListRow {
   id: string;
   name: string;
+  title: string;
   method: string;
   samples: number;
   constructs: string[];
-  pdb: string | null;
-  structure_entry: string;
+  /** reference structures, one per state */
+  structures: { pdb: string; entry: string; state: string }[];
   raw: string | null;
 }
 
-export interface EntryList {
-  schema_version: string;
+/** one protein of web/public/index.json, from its pinned UniProt record */
+export interface ProteinRow {
+  uniprot: string;
+  uniprot_id: string;
+  reviewed: boolean;
+  name: string;
+  gene: string | null;
+  organism: string;
+  taxon_id: number;
+  length: number;
+  entry_version: number;
+  source: { url: string; sha256: string; license: string };
   entries: EntryListRow[];
+}
+
+/** web/public/index.json: the front page, proteins by UniProt accession */
+export interface ProteinIndex {
+  schema_version: string;
+  proteins: ProteinRow[];
 }
 
 // --- entry records (entries/<id>.json, schema/hdx_entry.v0.1.json) ---------------------
@@ -153,6 +170,8 @@ export interface Sample {
   d2o_saturation?: number;
   pH_kind?: string;
   library?: string;
+  pH_labels?: string[];
+  merged_pH_series?: boolean;
   pH?: number | null;
   temperature_kelvin?: number | null;
   buffer?: string | null;
@@ -167,7 +186,16 @@ export interface PolymerEntity {
   sequence: string;
   source_organisms: unknown[];
   mutations: string[];
-  uniprot_mappings: unknown[];
+  uniprot_mappings: {
+    accession: string;
+    unp_entry_version?: number;
+    construct_begin?: number;
+    construct_end?: number;
+    unp_begin?: number;
+    unp_end?: number;
+    mismatches?: { construct_pos: number; unp_pos: number; construct: string; uniprot: string }[];
+    source: string;
+  }[];
 }
 
 export interface EntryRecord {
@@ -242,7 +270,18 @@ export interface PeptideStructure {
   label_of: Record<string, number>;
   auth_of: Record<string, number>;
   mismatches: { construct_pos: number; label_seq_id: number; construct: string; structure: string }[];
+  /** residues in contact with each ligand (CCD code), in construct positions; computed here */
+  ligand_contacts: LigandContact[];
   notes: string[];
+}
+
+export interface LigandContact {
+  ccd: string;
+  name: string | null;
+  role: "HDX state ligand" | "not in the HDX sample";
+  instances: number;
+  contacts: number[];
+  unmapped_label_seq_ids: number[];
 }
 
 export interface PeptideView {
@@ -275,4 +314,51 @@ export interface PeptideView {
   citation: string;
 }
 
-export type AnyView = PeptideView;
+// --- intact-protein views (views/view_<id>.json, kind "intact") -----------------------
+
+/** one Dataset_3 row: an intact-protein mHDX-MS measurement */
+export interface MhdxMeasurement {
+  id: string;
+  source_row: number;
+  library: string;
+  pH_label: string;
+  pH_labels: string[];
+  merged: boolean;
+  /** pH label of each timepoint (merged series have two) */
+  pH_index: string[];
+  retention_time_min: number | null;
+  sequence: string;
+  timepoints_s: (number | null)[];
+  exp_distribution: (number | null)[][];
+  pred_distribution: (number | null)[][];
+  exp_centroid: (number | null)[];
+  pred_centroid: (number | null)[];
+  backexchange: (number | null)[];
+  dg_sorted: (number | null)[];
+  ln_k_sorted: (number | null)[];
+  ln_k_ci5: (number | null)[];
+  ln_k_ci95: (number | null)[];
+  group: string;
+}
+
+export interface IntactView {
+  schema_version: string;
+  id: string;
+  kind: "intact";
+  name: string;
+  title: string;
+  grouping: string;
+  members: ViewMember[];
+  protein: { name: string; origin: string; topology: string | null; uniprot: string | null };
+  chain: ChainJSON;
+  external_refs: Record<string, string | string[] | null>;
+  artifacts: Artifact[];
+  runs: Run[];
+  mhdx: MhdxMeasurement[];
+  metrics: Metric[];
+  derivations: Derivation[];
+  license: string;
+  citation: string;
+}
+
+export type AnyView = IntactView | PeptideView;

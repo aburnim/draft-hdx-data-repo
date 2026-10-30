@@ -1,19 +1,173 @@
 {
   "schema_version": "0.2.0",
-  "entries": [
+  "proteins": [
     {
-      "id": "hdx_j0nfaf94",
-      "name": "ecDHFR",
-      "method": "HDX-MS (peptide)",
-      "samples": 3,
-      "constructs": [
-        "APO",
-        "MTX",
-        "TMP"
-      ],
-      "pdb": "5DFR, 1RG7, 6XG5",
-      "structure_entry": "hdx_2rh9oqpv",
-      "raw": "PRIDE PXD057539"
+      "uniprot": "P0ABQ4",
+      "uniprot_id": "DYR_ECOLI",
+      "reviewed": true,
+      "name": "Dihydrofolate reductase",
+      "gene": "folA",
+      "organism": "Escherichia coli (strain K12)",
+      "taxon_id": 83333,
+      "length": 159,
+      "entry_version": 167,
+      "source": {
+        "url": "https://rest.uniprot.org/uniprotkb/P0ABQ4.json",
+        "sha256": "4bca38a9a7ffddabe6aaabf61de5227a0c31ff18b7bf9143b9d1b4ede42e3e1a",
+        "license": "CC-BY-4.0"
+      },
+      "entries": [
+        {
+          "id": "hdx_j0nfaf94",
+          "name": "ecDHFR",
+          "title": "ecDHFR: peptide-level HDX-MS, apo / methotrexate / trimethoprim",
+          "method": "HDX-MS (peptide)",
+          "samples": 3,
+          "constructs": [
+            "APO",
+            "MTX",
+            "TMP"
+          ],
+          "structures": [
+            {
+              "pdb": "5DFR",
+              "entry": "hdx_2rh9oqpv",
+              "state": "APO"
+            },
+            {
+              "pdb": "1RG7",
+              "entry": "hdx_km0crwtx",
+              "state": "MTX"
+            },
+            {
+              "pdb": "6XG5",
+              "entry": "hdx_skjp41vt",
+              "state": "TMP"
+            }
+          ],
+          "raw": "PRIDE PXD057539"
+        }
+      ]
+    },
+    {
+      "uniprot": "Q46798",
+      "uniprot_id": "YGER_ECOLI",
+      "reviewed": true,
+      "name": "Uncharacterized lipoprotein YgeR",
+      "gene": "ygeR",
+      "organism": "Escherichia coli (strain K12)",
+      "taxon_id": 83333,
+      "length": 251,
+      "entry_version": 169,
+      "source": {
+        "url": "https://rest.uniprot.org/uniprotkb/Q46798.json",
+        "sha256": "8cabaa90be56ee21042861cfd2f44f9d3215ce21eefe7141809a0441a560ed8d",
+        "license": "CC-BY-4.0"
+      },
+      "entries": [
+        {
+          "id": "hdx_d4e7w0rn",
+          "name": "Uncharacterized lipoprotein YgeR 42-84",
+          "title": "Uncharacterized lipoprotein YgeR 42-84 (LysM): mHDX-MS, Lib09, pH6",
+          "method": "mHDX-MS (intact protein)",
+          "samples": 1,
+          "constructs": [
+            "Lib09, pH6"
+          ],
+          "structures": [],
+          "raw": "PRIDE PXD061702"
+        }
+      ]
+    },
+    {
+      "uniprot": "Q8CFI0",
+      "uniprot_id": "NED4L_MOUSE",
+      "reviewed": true,
+      "name": "E3 ubiquitin-protein ligase NEDD4-like",
+      "gene": "Nedd4l",
+      "organism": "Mus musculus",
+      "taxon_id": 10090,
+      "length": 1004,
+      "entry_version": 194,
+      "source": {
+        "url": "https://rest.uniprot.org/uniprotkb/Q8CFI0.json",
+        "sha256": "abff22762f9f15066d43eaa220228fbbb25d0462be572d23c53d3e44faa00cc9",
+        "license": "CC-BY-4.0"
+      },
+      "entries": [
+        {
+          "id": "hdx_rfjoi02h",
+          "name": "E3 ubiquitin-protein ligase NEDD4-like 528-557",
+          "title": "E3 ubiquitin-protein ligase NEDD4-like 528-557 (WW): mHDX-MS, Lib11, pH6",
+          "method": "mHDX-MS (intact protein)",
+          "samples": 1,
+          "constructs": [
+            "Lib11, pH6"
+          ],
+          "structures": [],
+          "raw": "PRIDE PXD061702"
+        }
+      ]
+    },
+    {
+      "uniprot": "Q9DBH0",
+      "uniprot_id": "WWP2_MOUSE",
+      "reviewed": true,
+      "name": "NEDD4-like E3 ubiquitin-protein ligase WWP2",
+      "gene": "Wwp2",
+      "organism": "Mus musculus",
+      "taxon_id": 10090,
+      "length": 870,
+      "entry_version": 180,
+      "source": {
+        "url": "https://rest.uniprot.org/uniprotkb/Q9DBH0.json",
+        "sha256": "896d33722b459c3ec400a760cc82f047b648c20bc0f7f065997ba246461aa1d1",
+        "license": "CC-BY-4.0"
+      },
+      "entries": [
+        {
+          "id": "hdx_uehxzbhn",
+          "name": "NEDD4-like E3 ubiquitin-protein ligase WWP2 446-475",
+          "title": "NEDD4-like E3 ubiquitin-protein ligase WWP2 446-475 (WW): mHDX-MS, Lib13, pH6+pH9 (merged)",
+          "method": "mHDX-MS (intact protein)",
+          "samples": 1,
+          "constructs": [
+            "Lib13, pH6+pH9"
+          ],
+          "structures": [],
+          "raw": "PRIDE PXD061702"
+        }
+      ]
+    },
+    {
+      "uniprot": "Q9V853",
+      "uniprot_id": "SMUF1_DROME",
+      "reviewed": true,
+      "name": "E3 ubiquitin-protein ligase Smurf1",
+      "gene": "Smurf",
+      "organism": "Drosophila melanogaster",
+      "taxon_id": 7227,
+      "length": 1061,
+      "entry_version": 182,
+      "source": {
+        "url": "https://rest.uniprot.org/uniprotkb/Q9V853.json",
+        "sha256": "f5e1534e8335f0ecf36648856cf22fba73d58b16edf184535db6993536d1a221",
+        "license": "CC-BY-4.0"
+      },
+      "entries": [
+        {
+          "id": "hdx_2wht8x7q",
+          "name": "E3 ubiquitin-protein ligase Smurf1 169-198",
+          "title": "E3 ubiquitin-protein ligase Smurf1 169-198 (WW): mHDX-MS, Lib08, pH6+pH9 (merged)",
+          "method": "mHDX-MS (intact protein)",
+          "samples": 1,
+          "constructs": [
+            "Lib08, pH6+pH9"
+          ],
+          "structures": [],
+          "raw": "PRIDE PXD061702"
+        }
+      ]
     }
   ]
 }

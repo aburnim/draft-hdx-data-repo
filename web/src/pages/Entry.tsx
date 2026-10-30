@@ -3,6 +3,7 @@ import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { type ReactNode, useEffect } from "react";
 
 import { fmt, metricLabel, useJSON } from "../hdx/data";
+import IntactExplorer from "../hdx/IntactExplorer";
 import PeptideExplorer from "../hdx/PeptideExplorer";
 import Provenance from "../hdx/Provenance";
 import { derivationLabel, ProvenanceProvider, RAW_STYLE, SourceLine, TIER_STYLE } from "../hdx/provenance-card";
@@ -25,7 +26,7 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
   useEffect(() => {
     if (tab === "provenance" && rec && view) document.getElementById("provenance")?.scrollIntoView();
   }, [tab, rec, view]);
-  if (error) return <p className="text-danger">No entry {id}. <a className="underline" href="#/">Back to all entries</a>.</p>;
+  if (error) return <p className="text-danger">No entry {id}. <a className="underline" href="#/">Back to all proteins</a>.</p>;
   if (viewError) return <p className="text-danger">Could not load the cross-entry view: {viewError}</p>;
   if (!rec || !view) return <p className="text-ink-muted">Loading entry…</p>;
   const active = tab === "provenance" ? "overview" : TABS.some((t) => t.id === tab) ? tab : "explore";
@@ -33,7 +34,9 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
   return (
     <div className="flex flex-col gap-4">
       <nav className="text-[12px] text-ink-muted">
-        <a className="hover:text-accent" href="#/">All entries</a> / <span className="text-ink-secondary">{rec.id}</span>
+        <a className="hover:text-accent" href="#/">All proteins</a>
+        {view.protein.uniprot && <> / <a className="hover:text-accent" href={`#/protein/${view.protein.uniprot}`}>{view.protein.uniprot}</a></>}
+        {" / "}<span className="text-ink-secondary">{rec.id}</span>
       </nav>
       <header className="flex flex-col gap-2 border-b border-line pb-4">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -49,18 +52,7 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
           <Badge k="Schema" v={rec.schema_version} />
           <Badge k="Revision" v={`${rec.revision.revision_number} · ${rec.revision.state}`} />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
-          <span className="text-ink-muted">Linked entries (shared sequence):</span>
-          {view.members.map((m) => (
-            <a
-              key={m.id}
-              href={`#/entry/${m.id}/${active}`}
-              className={`rounded border px-2 py-0.5 ${m.id === rec.id ? "border-accent bg-accent-soft text-accent" : "border-line-strong text-ink-secondary hover:bg-surface-muted"}`}
-            >
-              {m.kind === "structure" ? `Structure ${m.title.split(":")[0]}` : m.method} <span className="font-mono text-[10.5px] opacity-70">{m.id}</span>
-            </a>
-          ))}
-        </div>
+        <ReferenceLinks rec={rec} view={view} tab={active} />
       </header>
 
       <div className="-mx-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
@@ -78,13 +70,45 @@ export default function Entry({ id, tab }: { id: string; tab: string }) {
             <p className="text-[12px] text-ink-muted">
               Cross-entry view <span className="font-mono">{view.id}</span>: {view.grouping}
             </p>
-            <PeptideExplorer view={view} />
+            {view.kind === "peptide" ? <PeptideExplorer view={view} /> : <IntactExplorer view={view} />}
           </>
         )}
         {active === "overview" && <Overview rec={rec} view={view} />}
         {active === "models" && <Models rec={rec} view={view} />}
         {active === "downloads" && <Downloads rec={rec} view={view} />}
       </ProvenanceProvider>
+    </div>
+  );
+}
+
+/** HDX entry: its reference structures, one per state. Structure entry: the HDX entry and
+ * state it is the reference for. */
+function ReferenceLinks({ rec, view, tab }: { rec: EntryRecord; view: View; tab: string }) {
+  if (view.kind !== "peptide") return null; // intact-protein views have no reference structures
+  const chip = "rounded border border-line-strong px-2 py-0.5 text-ink-secondary hover:bg-surface-muted";
+  const stateLabel = (id: string) => view.states.find((s) => s.id === id)?.label ?? id;
+  if (rec.kind === "hdx") {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+        <span className="text-ink-muted">Reference structures:</span>
+        {view.structures.map((s) => (
+          <a key={s.entry} href={`#/entry/${s.entry}/${tab}`} className={chip}>
+            {s.pdb} <span className="opacity-70">{stateLabel(s.state)}</span>
+          </a>
+        ))}
+      </div>
+    );
+  }
+  const hdx = view.members.find((m) => m.kind === "hdx");
+  const own = view.structures.find((s) => s.entry === rec.id);
+  if (!hdx) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+      <span className="text-ink-muted">Reference structure for:</span>
+      <a href={`#/entry/${hdx.id}/${tab}`} className={chip}>
+        {hdx.method} <span className="font-mono text-[10.5px] opacity-70">{hdx.id}</span>
+      </a>
+      {own && <span className="text-ink-muted">{stateLabel(own.state)} state</span>}
     </div>
   );
 }
@@ -198,9 +222,20 @@ function Overview({ rec, view }: { rec: EntryRecord; view: View }) {
       <section className="flex flex-col gap-2">
         <H2>Polymer entities</H2>
         <Table
-          head={["Entity", "Construct", "Length", "Sequence"]}
+          head={["Entity", "Construct", "Length", "UniProt mapping", "Sequence"]}
           rows={rec.polymer_entities.map((p) => [
             <span className="font-mono">{p.id}</span>, p.construct ?? "–", p.sequence.length,
+            p.uniprot_mappings.length ? p.uniprot_mappings.map((u) => (
+              <span key={u.accession} className="block">
+                <a className="font-mono text-accent underline" href={`#/protein/${u.accession}`}>{u.accession}</a>
+                {u.unp_begin != null && <> {u.unp_begin}–{u.unp_end} (construct {u.construct_begin}–{u.construct_end})</>}
+                {u.mismatches?.length ? (
+                  <span className="block text-ink-muted">
+                    differs at {u.mismatches.map((m) => `${m.construct}${m.construct_pos} (UniProt ${m.uniprot}${m.unp_pos})`).join(", ")}
+                  </span>
+                ) : null}
+              </span>
+            )) : "–",
             <span className="break-all font-mono text-[11px]">{p.sequence}</span>,
           ])}
         />
@@ -210,12 +245,12 @@ function Overview({ rec, view }: { rec: EntryRecord; view: View }) {
         <section className="flex flex-col gap-2">
           <H2>Samples</H2>
           <Table
-            head={["Sample", "Construct", "Ligand · replicates", "pH", "Temperature", "Buffer", "Labeling times", "Source"]}
+            head={["Sample", "Construct", samples.some((s) => s.ligand !== undefined) ? "Ligand · replicates" : "Library", "pH", "Temperature", "Buffer", "Labeling times", "Source"]}
             rows={samples.map((s) => [
               <span className="font-mono">{s.id}</span>,
               pe.get(s.polymer_entity)?.construct ?? s.polymer_entity,
-              `${s.ligand ?? "none"} · ${(s.replicates ?? []).join(", ")}`,
-              s.pH != null ? `${s.pH.toFixed(1)}${s.pH_kind === "pH(read)" ? " (read)" : ""}` : "not reported",
+              s.ligand !== undefined ? `${s.ligand ?? "none"} · ${(s.replicates ?? []).join(", ")}` : (s.library ?? "–"),
+              s.pH != null ? `${s.pH.toFixed(1)}${s.pH_kind === "pH(read)" ? " (read)" : ""}` : s.pH_labels?.length ? s.pH_labels.join(" + ") + (s.merged_pH_series ? " (merged)" : "") : "not reported",
               s.temperature_kelvin != null ? `${s.temperature_kelvin} K` : "not reported",
               s.buffer ?? "not reported",
               s.labeling_times_s ? `${s.labeling_times_s.length}` : "–",

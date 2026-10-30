@@ -61,11 +61,27 @@ export function fmtTime(s: number): string {
   return `${(s / 86400).toFixed(1)} d`;
 }
 
-/** label and hint for a peptide-level metric key */
+/** label and hint for a metric key, including the generated peptide-level keys */
 export function metricLabel(key: string): { label: string; hint: string } {
+  const known = METRIC_LABELS[key];
+  if (known) return known;
   let m = key.match(/^repro_median_sd_(.+)$/);
   if (m) return { label: `Replicate SD, ${m[1]} (median)`, hint: "Median standard deviation over replicates, per peptide and time (L1)" };
   m = key.match(/^(\w+)_vs_(\w+):(.+)$/);
   if (m) return { label: `${m[1]} vs ${m[2]}: ${m[3]}`, hint: "Peptides in this class under the hybrid significance test (L2, computed here)" };
   return { label: key, hint: "" };
 }
+
+/** intact-protein mHDX-MS metrics, copied from Dataset_3 */
+export const METRIC_LABELS: Record<string, { label: string; hint: string }> = {
+  dg_max: { label: "ΔG max", hint: "Dataset_3 dg_max; definition not stated. It can differ from the highest value of the sorted site ΔG (free_energy)" },
+  dg_median: { label: "ΔG median", hint: "Dataset_3 dg_median; definition not stated. It is not the median of all sorted site ΔG values (free_energy)" },
+  cooperativity: { label: "Cooperativity", hint: "Dataset_3 cooperativity_model_global; defined in Ferrari et al." },
+  cooperativity_normalized: { label: "Cooperativity (norm.)", hint: "Dataset_3 normalized_cooperativity_model_global; normalization defined in Ferrari et al." },
+  fit_rmse: { label: "Fit RMSE", hint: "RMSE of the rate fit to the isotope distributions (rate_fitting_rmse_total)" },
+  fit_rmse_max: { label: "Fit RMSE max", hint: "Dataset_3 rate_fitting_rmse_max" },
+  idotp_max: { label: "idotp", hint: "Dot product of observed and theoretical isotope patterns (max_idotp; 1 = identical)" },
+  backexchange_final: { label: "Back-exchange", hint: "Back-exchange estimate at the final labeling time (backexchange_final_tp)" },
+  n_exchangeable: { label: "Exchangeable sites", hint: "Number of exchangeable backbone amides (n_exch_res)" },
+  n_protected: { label: "Protected sites", hint: "Dataset_3 n_protected_res; defined in Ferrari et al." },
+};

@@ -3,11 +3,12 @@
 Entries follow the Dynamic PDB schema v0.2.0 where it applies (one experimental context
 per entry; polymer entities for constructs; models, runs and artifacts), with HDX
 extensions listed in each record's `extensions`. The registry holds one peptide-level
-HDX-MS entry (ecDHFR, built by build_peptide.py) and its reference-structure entries.
-The HDX entry and its structures form one cross-entry view (the Explore tab).
+HDX-MS entry (ecDHFR, built by build_peptide.py) with its reference-structure entries, and
+intact-protein mHDX-MS entries of natural domains (build_intact.py). Each HDX entry and its
+structures form one cross-entry view (the Explore tab).
 
 Reads data/raw/ (see fetch.py) and writes, under web/public/:
-  index.json                     the HDX entries (front page list)
+  index.json                     proteins by UniProt accession, each with its HDX entries (front page)
   entries/<id>.json              entry records (schema/hdx_entry.v0.2.json)
   views/<view>.json              cross-entry views (schema/hdx_view.v0.2.json)
   structures/<pdb>.cif           reference coordinates
@@ -21,6 +22,7 @@ import hashlib
 import json
 import math
 import shutil
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import gemmi
@@ -111,8 +113,65 @@ def read_structure(pdb: str) -> dict:
         "sequence": "".join(p["letter"] for p in positions),
         "positions": positions,
         "ligands": sorted({gemmi.cif.as_string(r[0]) for r in block.find("_pdbx_nonpoly_scheme.", ["mon_id"])} - {"HOH"}),
+        "uniprot": sorted({gemmi.cif.as_string(r[1]) for r in block.find("_struct_ref.", ["db_name", "pdbx_db_accession"])
+                           if gemmi.cif.as_string(r[0]) == "UNP"}),
         "resolution": num(gemmi.cif.as_string(block.find_value("_refine.ls_d_res_high") or "")) if block.find_value("_refine.ls_d_res_high") else None,
     }
+
+
+# --- sequences: alignment and UniProt --------------------------------------------------
+
+
+def align(construct: str, seq: str) -> tuple[dict[int, int], list[dict]]:
+    """construct position (1-based) -> structure label_seq_id, plus mismatches inside the
+    aligned region (single-residue gaps between matching blocks)."""
+    sm = SequenceMatcher(None, construct, seq, autojunk=False)
+    blocks = [b for b in sm.get_matching_blocks() if b.size > 5]
+    mapping, mism = {}, []
+    for b in blocks:
+        for i in range(b.size):
+            mapping[b.a + i + 1] = b.b + i + 1
+    for b1, b2 in zip(blocks, blocks[1:]):
+        ga, gb = b2.a - (b1.a + b1.size), b2.b - (b1.b + b1.size)
+        if ga == gb:
+            for i in range(ga):
+                a, s = b1.a + b1.size + i, b1.b + b1.size + i
+                mapping[a + 1] = s + 1
+                mism.append({"construct_pos": a + 1, "label_seq_id": s + 1, "construct": construct[a], "structure": seq[s]})
+    return mapping, mism
+
+
+def uniprot_record(accession: str, construct: str) -> tuple[dict, dict]:
+    """(protein summary for the index, polymer-entity mapping) from the pinned UniProt file."""
+    key = f"uniprot_{accession.lower()}"
+    d = json.loads((RAW / LOCK[key]["file"]).read_text())
+    seq = d["sequence"]["value"]
+    pos, mism = align(construct, seq)
+    mapped = sorted(pos)
+    mapping = {
+        "accession": accession, "unp_entry_version": d["entryAudit"]["entryVersion"],
+        "construct_begin": mapped[0], "construct_end": mapped[-1],
+        "unp_begin": pos[mapped[0]], "unp_end": pos[mapped[-1]],
+        "mismatches": [{"construct_pos": m["construct_pos"], "unp_pos": m["label_seq_id"],
+                        "construct": m["construct"], "uniprot": m["structure"]} for m in mism],
+        "source": "alignment of the construct to the UniProt sequence (difflib, blocks > 5 residues)",
+    }
+    # a construct residue just before the first matching block that stands in for UniProt
+    # residue 1 (e.g. S16 replacing the initiator M1) is a substitution, not a gap, so align()
+    # does not report it. Other leading residues (tags) stay outside the mapping.
+    first, unp_first = mapped[0], pos[mapped[0]]
+    if unp_first == 2 and first >= 2 and construct[first - 2] != seq[0]:
+        mapping["mismatches"].insert(0, {"construct_pos": first - 1, "unp_pos": 1, "construct": construct[first - 2], "uniprot": seq[0]})
+        mapping["construct_begin"], mapping["unp_begin"] = first - 1, 1
+    protein = {
+        "uniprot": accession, "uniprot_id": d["uniProtkbId"], "reviewed": d["entryType"].endswith("(Swiss-Prot)"),
+        "name": d["proteinDescription"]["recommendedName"]["fullName"]["value"],
+        "gene": next((g["geneName"]["value"] for g in d.get("genes", []) if "geneName" in g), None),
+        "organism": d["organism"]["scientificName"], "taxon_id": d["organism"]["taxonId"],
+        "length": d["sequence"]["length"], "entry_version": d["entryAudit"]["entryVersion"],
+        "source": {"url": LOCK[key]["url"], "sha256": LOCK[key]["sha256"], "license": LOCK[key]["license"]},
+    }
+    return protein, mapping
 
 
 # --- reference structures --------------------------------------------------------------
@@ -193,7 +252,7 @@ def main() -> None:
     shutil.copyfile(ROOT / "sources.lock.json", OUT / "sources.lock.json")
     # peptide-level HDX-MS (ecDHFR)
     import build_peptide
-    pview, pentries, _ = build_peptide.build(REVISION)
+    pview, pentries, protein = build_peptide.build(REVISION)
     jsonschema.validate(pview, SCHEMA_VIEW)
     (OUT / "views" / f"{pview['id']}.json").write_text(json.dumps(pview, separators=(",", ":")))
     for e in pentries:
@@ -202,14 +261,33 @@ def main() -> None:
     for x in pview["structures"]:
         shutil.copyfile(RAW / f"{x['pdb']}.cif", OUT / "structures" / f"{x['pdb']}.cif")
     pe = pentries[0]
-    listed = [{"id": pe["id"], "name": pview["name"], "method": "HDX-MS (peptide)", "samples": len(pe["hdx"]["samples"]),
-               "constructs": [s["id"] for s in pe["hdx"]["samples"]],
-               "pdb": pview["external_refs"]["pdb"], "structure_entry": pview["structures"][0]["entry"], "raw": f"PRIDE {build_peptide.PRIDE}"}]
+    row = {"id": pe["id"], "name": pview["name"], "title": pe["title"], "method": "HDX-MS (peptide)",
+           "samples": len(pe["hdx"]["samples"]), "constructs": [s["id"] for s in pe["hdx"]["samples"]],
+           "structures": [{"pdb": x["pdb"], "entry": x["entry"], "state": x["state"]} for x in pview["structures"]],
+           "raw": f"PRIDE {build_peptide.PRIDE}"}
     print(f"{pview['id']:10s} {pview['name']:16s} entries={[e['id'] for e in pentries]} peptides={len(pview['peptides'])}")
+    # the front page lists proteins by UniProt accession; each lists its HDX-MS entries
+    proteins: dict[str, dict] = {}
+    proteins.setdefault(protein["uniprot"], protein | {"entries": []})["entries"].append(row)
+    # intact-protein mHDX-MS (natural domains, Ferrari et al. 2026)
+    import build_intact
+    for view, entry, protein in build_intact.build(REVISION):
+        jsonschema.validate(view, SCHEMA_VIEW)
+        jsonschema.validate(entry, SCHEMA_ENTRY)
+        (OUT / "views" / f"{view['id']}.json").write_text(json.dumps(view, separators=(",", ":")))
+        (OUT / "entries" / f"{entry['id']}.json").write_text(json.dumps(entry, separators=(",", ":")))
+        sample = entry["hdx"]["samples"][0]
+        proteins.setdefault(protein["uniprot"], protein | {"entries": []})["entries"].append(
+            {"id": entry["id"], "name": view["name"], "title": entry["title"], "method": "mHDX-MS (intact protein)",
+             "samples": 1, "constructs": [f"{sample['library']}, {'+'.join(sample['pH_labels'])}"],
+             "structures": [], "raw": f"PRIDE {build_intact.PRIDE}"})
+        raw_n = sum(1 for a in entry["artifacts"] if a["level"] == "L0")
+        print(f"{view['id']:14s} {view['name']:40s} entry={entry['id']} raw_files={raw_n}")
     for f in ("hdx_entry.v0.2.json", "hdx_view.v0.2.json"):
         shutil.copyfile(ROOT / "schema" / f, OUT / "schema" / f)
-    (OUT / "index.json").write_text(json.dumps({"schema_version": VERSION, "entries": listed}, indent=2) + "\n")
-    print(f"index: {len(listed)} HDX entries")
+    listed = sorted(proteins.values(), key=lambda p: p["uniprot"])
+    (OUT / "index.json").write_text(json.dumps({"schema_version": VERSION, "proteins": listed}, indent=2) + "\n")
+    print(f"index: {len(listed)} proteins, {sum(len(p['entries']) for p in listed)} HDX entries")
 
 
 if __name__ == "__main__":
